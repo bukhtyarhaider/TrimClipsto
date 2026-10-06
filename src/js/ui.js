@@ -1,8 +1,8 @@
 /**
- * UI orchestration: DOM views, row updates, summary stats, and animations.
+ * UI orchestration: DOM views, row updates, summary stats, studio sidebar sync, and animations.
  */
 
-import { getColor } from "./constants.js";
+import { getColor, ICON } from "./constants.js";
 import { esc, human, toSec } from "./time.js";
 import { validateClips } from "./validation.js";
 import { rowHTML, doneRowHTML, emptyHTML } from "./templates.js";
@@ -18,7 +18,9 @@ import {
   getCurrentTime,
   getPlayingClip,
   setTlMax,
-  seekTo
+  seekTo,
+  isStudioOpen,
+  updateStudioScrubRange
 } from "./video.js";
 import { showToast } from "./toast.js";
 
@@ -75,6 +77,22 @@ export function nextToReview() {
   showToast("Every clip is approved");
 }
 
+export function prevClip() {
+  const { clips, activeId } = getState();
+  if (!clips.length) return;
+  const curIdx = clips.findIndex(c => c.id === activeId);
+  const prevIdx = curIdx <= 0 ? clips.length - 1 : curIdx - 1;
+  goTo(clips[prevIdx].id);
+}
+
+export function nextClip() {
+  const { clips, activeId } = getState();
+  if (!clips.length) return;
+  const curIdx = clips.findIndex(c => c.id === activeId);
+  const nxtIdx = curIdx >= clips.length - 1 ? 0 : curIdx + 1;
+  goTo(clips[nxtIdx].id);
+}
+
 export function renderList() {
   const { clips, savedSession } = getState();
   const empty = !clips.length;
@@ -96,6 +114,113 @@ export function renderList() {
   }
 
   refresh();
+}
+
+/**
+ * Synchronizes the right sidebar in Studio Mode with active clip state.
+ */
+export function syncStudioSidebar(clips, activeId, validationResults) {
+  const sidebar = $("#studioSidebar");
+  if (!sidebar) return;
+
+  if (!clips.length) {
+    $("#studioStats").textContent = "0 clips";
+    $("#studioNavCount").textContent = "0";
+    $("#studioNavList").innerHTML = `<p class="dnone" style="margin:10px 0;padding:12px">No clips yet. Click "+ New Clip" above.</p>`;
+    return;
+  }
+
+  let curIdx = clips.findIndex(c => c.id === activeId);
+  if (curIdx < 0) {
+    curIdx = 0;
+    setActiveId(clips[0].id);
+  }
+  const curClip = clips[curIdx];
+  const curVal = validationResults[curIdx] || { issues: [], dur: null, s: null, e: null };
+
+  const approvedCount = clips.filter(c => c.ok).length;
+  $("#studioStats").textContent = `${approvedCount} of ${clips.length} approved`;
+  $("#studioNavCount").textContent = String(clips.length);
+
+  // Active clip editor fields
+  $("#studioActiveBadge").textContent = `#${curIdx + 1}`;
+  $("#studioActiveBadge").style.background = getColor(curIdx);
+
+  const titleInp = $("#studioTitleInp");
+  if (titleInp && document.activeElement !== titleInp) {
+    titleInp.value = curClip.title || "";
+  }
+
+  const inVal = $("#studioInVal");
+  if (inVal && document.activeElement !== inVal) {
+    inVal.value = curClip.start || "";
+  }
+
+  const outVal = $("#studioOutVal");
+  if (outVal && document.activeElement !== outVal) {
+    outVal.value = curClip.end || "";
+  }
+
+  const nameInp = $("#studioNameInp");
+  if (nameInp && document.activeElement !== nameInp) {
+    nameInp.value = curClip.output_name || "";
+  }
+
+  // Duration pill & scrub range
+  const durPill = $("#studioDurPill");
+  if (durPill) {
+    durPill.textContent = curVal.dur !== null ? human(curVal.dur) : "–";
+    const hasErr = curVal.issues.some(x => x.f === "end" || x.f === "start");
+    durPill.classList.toggle("err", hasErr);
+  }
+
+  updateStudioScrubRange(curVal.s, curVal.e);
+
+  // Approve button status
+  const approveBtn = $("#studioApproveBtn");
+  const approveTxt = $("#studioApproveTxt");
+  const hasErr = curVal.issues.some(x => x.l === "err");
+
+  if (curClip.ok) {
+    approveBtn.classList.add("approved");
+    approveBtn.disabled = false;
+    approveTxt.textContent = "Approved (Click to Unlock)";
+  } else {
+    approveBtn.classList.remove("approved");
+    approveBtn.disabled = hasErr;
+    approveTxt.textContent = hasErr ? "Fix Errors to Approve" : "Approve & Next";
+  }
+
+  // Navigation arrows disabled state
+  const prevBtn = $("#studioPrevClipBtn");
+  const nextBtn = $("#studioNextClipBtn");
+  if (prevBtn) prevBtn.disabled = clips.length <= 1;
+  if (nextBtn) nextBtn.disabled = clips.length <= 1;
+
+  // Mini Clip Navigator List
+  const navList = $("#studioNavList");
+  if (navList) {
+    navList.innerHTML = clips
+      .map((c, i) => {
+        const v = validationResults[i] || {};
+        const len = v.dur !== null ? human(v.dur) : "";
+        const isActive = c.id === curClip.id;
+        const isApproved = c.ok;
+
+        return `
+        <div class="studio-nav-item${isActive ? " active" : ""}" data-nav-id="${c.id}" style="--c:${getColor(i)}">
+          <span class="studio-nav-idx">${i + 1}</span>
+          <div class="studio-nav-main">
+            <span class="studio-nav-name">${esc(c.title || "Untitled")}</span>
+            <span class="studio-nav-meta">${esc(c.start || "–")} → ${esc(c.end || "–")}${len ? " (" + len + ")" : ""}</span>
+          </div>
+          <span class="studio-nav-status">
+            ${isApproved ? ICON.check : ""}
+          </span>
+        </div>`;
+      })
+      .join("");
+  }
 }
 
 export function refresh() {
@@ -218,6 +343,9 @@ export function refresh() {
   const json = JSON.stringify(toJSON(clips), null, 2);
   const prevEl = $("#preview");
   if (prevEl) prevEl.textContent = json;
+
+  // Sync Studio Sidebar
+  syncStudioSidebar(clips, activeId, v);
 
   return { errs };
 }

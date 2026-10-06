@@ -1,5 +1,5 @@
 /**
- * Main application bootstrap and event bindings.
+ * Main application bootstrap, studio trim mode, and event bindings.
  */
 
 import "./css/style.css";
@@ -39,7 +39,11 @@ import {
   nudgeVideo,
   playClip,
   togglePlayPause,
-  getTlMax
+  getTlMax,
+  isStudioOpen,
+  enterStudioMode,
+  exitStudioMode,
+  toggleStudioMode
 } from "./js/video.js";
 import { showToast } from "./js/toast.js";
 import {
@@ -48,15 +52,96 @@ import {
   flash,
   goTo,
   nextToReview,
+  prevClip,
+  nextClip,
   updateActiveHint
 } from "./js/ui.js";
 
 const $ = s => document.querySelector(s);
 const listEl = $("#list");
 
+/* ---------- Custom Accessible Confirm Dialog ---------- */
+
+/**
+ * Prompts the user with a custom modal dialog instead of native window.confirm.
+ * @param {object} options
+ * @param {string} options.title - Dialog heading
+ * @param {string} options.message - Confirmation text
+ * @param {string} [options.okText="Confirm"] - Text for positive action
+ * @param {boolean} [options.isDanger=false] - Whether this is a destructive action
+ * @returns {Promise<boolean>}
+ */
+export function showConfirm({
+  title = "Are you sure?",
+  message = "",
+  okText = "Confirm",
+  isDanger = false
+} = {}) {
+  const dlg = $("#confirmDlg");
+  if (!dlg) return Promise.resolve(window.confirm(message));
+
+  return new Promise(resolve => {
+    let settled = false;
+
+    $("#confirmTitle").textContent = title;
+    $("#confirmMsg").textContent = message;
+
+    const okBtn = $("#confirmOk");
+    okBtn.textContent = okText;
+    okBtn.className = isDanger ? "btn primary danger" : "btn primary";
+
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (dlg.open) dlg.close();
+      resolve(result);
+    };
+
+    const onOk = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      finish(true);
+    };
+
+    const onCancel = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      finish(false);
+    };
+
+    const onBackdrop = e => {
+      const rect = dlg.getBoundingClientRect();
+      const inDialog =
+        rect.top <= e.clientY &&
+        e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX &&
+        e.clientX <= rect.left + rect.width;
+      if (!inDialog) finish(false);
+    };
+
+    const onClose = () => finish(false);
+
+    function cleanup() {
+      $("#confirmOk").removeEventListener("click", onOk);
+      $("#confirmCancel").removeEventListener("click", onCancel);
+      dlg.removeEventListener("click", onBackdrop);
+      dlg.removeEventListener("close", onClose);
+    }
+
+    $("#confirmOk").addEventListener("click", onOk);
+    $("#confirmCancel").addEventListener("click", onCancel);
+    dlg.addEventListener("click", onBackdrop);
+    dlg.addEventListener("close", onClose);
+
+    dlg.showModal();
+    $("#confirmCancel").focus();
+  });
+}
+
 /* ---------- Import Helpers ---------- */
 
-function importText(text) {
+async function importText(text) {
   let data;
   try {
     data = JSON.parse(text);
@@ -73,11 +158,14 @@ function importText(text) {
   }
 
   const { clips } = getState();
-  if (
-    clips.some(c => c.ok) &&
-    !confirm("Loading this file replaces all clips and clears your approvals. Continue?")
-  ) {
-    return "";
+  if (clips.some(c => c.ok)) {
+    const confirmed = await showConfirm({
+      title: "Replace current clips?",
+      message: "Loading this file replaces all current clips and clears your approvals. Continue?",
+      okText: "Replace clips",
+      isDanger: true
+    });
+    if (!confirmed) return "";
   }
 
   takeSnapshot();
@@ -111,7 +199,7 @@ function setFromVideo(field) {
   showToast(`Clip ${clips.indexOf(c) + 1} ${field} set to ${c[field]}`);
 }
 
-/* ---------- Setup Event Delegation on List ---------- */
+/* ---------- Setup Event Delegation on Main List ---------- */
 
 function setupListEvents() {
   listEl.addEventListener("input", e => {
@@ -296,7 +384,217 @@ function setupListEvents() {
   });
 }
 
-/* ---------- Setup Toolbar & UI Handlers ---------- */
+/* ---------- Setup Studio Sidebar & Inspector Events ---------- */
+
+function setupStudioSidebarEvents() {
+  // Maximize studio button
+  const vStudioBtn = $("#vStudioBtn");
+  if (vStudioBtn) vStudioBtn.onclick = enterStudioMode;
+
+  const topStudioBtn = $("#topStudioBtn");
+  if (topStudioBtn) topStudioBtn.onclick = enterStudioMode;
+
+  const dropZone = $("#studioDropZone");
+  if (dropZone) dropZone.onclick = () => $("#videoInput").click();
+
+  // Title edit in studio
+  const sTitle = $("#studioTitleInp");
+  if (sTitle) {
+    sTitle.addEventListener("input", e => {
+      const activeId = getActiveId();
+      const c = getClip(activeId);
+      if (!c) return;
+      c.title = e.target.value;
+      c.ok = false;
+      refresh();
+    });
+  }
+
+  // In / Out manual editing in studio
+  const sInVal = $("#studioInVal");
+  if (sInVal) {
+    sInVal.addEventListener("change", e => {
+      const activeId = getActiveId();
+      const c = getClip(activeId);
+      if (!c) return;
+      const s = toSec(e.target.value);
+      if (s !== null) {
+        c.start = fmt(s);
+        e.target.value = c.start;
+        c.ok = false;
+        seekTo(s);
+      }
+      refresh();
+    });
+  }
+
+  const sOutVal = $("#studioOutVal");
+  if (sOutVal) {
+    sOutVal.addEventListener("change", e => {
+      const activeId = getActiveId();
+      const c = getClip(activeId);
+      if (!c) return;
+      const s = toSec(e.target.value);
+      if (s !== null) {
+        c.end = fmt(s);
+        e.target.value = c.end;
+        c.ok = false;
+        seekTo(s);
+      }
+      refresh();
+    });
+  }
+
+  // Set In / Set Out buttons
+  const sSetInBtn = $("#studioSetInBtn");
+  if (sSetInBtn) {
+    sSetInBtn.onclick = () => setFromVideo("start");
+  }
+
+  const sSetOutBtn = $("#studioSetOutBtn");
+  if (sSetOutBtn) {
+    sSetOutBtn.onclick = () => setFromVideo("end");
+  }
+
+  // Seek to In / Out buttons
+  const sSeekIn = $("#studioSeekInBtn");
+  if (sSeekIn) {
+    sSeekIn.onclick = () => {
+      const c = getClip(getActiveId());
+      if (c && toSec(c.start) !== null) seekTo(toSec(c.start));
+    };
+  }
+
+  const sSeekOut = $("#studioSeekOutBtn");
+  if (sSeekOut) {
+    sSeekOut.onclick = () => {
+      const c = getClip(getActiveId());
+      if (c && toSec(c.end) !== null) seekTo(toSec(c.end));
+    };
+  }
+
+  // Filename input & suggest in studio
+  const sNameInp = $("#studioNameInp");
+  if (sNameInp) {
+    sNameInp.addEventListener("change", e => {
+      const c = getClip(getActiveId());
+      if (!c) return;
+      c.output_name = cleanFileName(e.target.value);
+      e.target.value = c.output_name;
+      c.ok = false;
+      refresh();
+    });
+  }
+
+  const sSuggestBtn = $("#studioSuggestBtn");
+  if (sSuggestBtn) {
+    sSuggestBtn.onclick = () => {
+      const { clips } = getState();
+      const c = getClip(getActiveId());
+      if (!c) return;
+      const i = clips.indexOf(c);
+      c.ok = false;
+      c.output_name = suggestName(c.title, i, clips.length);
+      const nameInput = $("#studioNameInp");
+      if (nameInput) nameInput.value = c.output_name;
+      refresh();
+      showToast(`Suggested filename: ${c.output_name}`);
+    };
+  }
+
+  // Approve button in studio
+  const sApproveBtn = $("#studioApproveBtn");
+  if (sApproveBtn) {
+    sApproveBtn.onclick = () => {
+      const activeId = getActiveId();
+      if (!activeId) return;
+      const result = toggleApproval(activeId);
+      if (!result) return;
+      renderList();
+      if (result.approved) {
+        if (result.nextId !== null) {
+          goTo(result.nextId);
+        } else {
+          nextClip();
+        }
+        showToast(`Clip ${result.index + 1} approved`, true, () => {
+          restoreSnapshot();
+          renderList();
+        });
+      }
+    };
+  }
+
+  // Preview active clip button in studio
+  const sPrevClipBtn = $("#studioPreviewClipBtn");
+  if (sPrevClipBtn) {
+    sPrevClipBtn.onclick = () => {
+      const activeId = getActiveId();
+      if (activeId) playClip(activeId);
+    };
+  }
+
+  // Add new clip at current playhead button
+  const sAddHereBtn = $("#studioAddHereBtn");
+  if (sAddHereBtn) {
+    sAddHereBtn.onclick = () => {
+      const cur = getCurrentTime();
+      const newClip = addClip();
+      newClip.start = fmt(cur);
+      newClip.end = fmt(cur + 30);
+      renderList();
+      goTo(newClip.id);
+      showToast(`Created new clip at ${newClip.start}`);
+    };
+  }
+
+  // Duplicate button in studio
+  const sDupBtn = $("#studioDupBtn");
+  if (sDupBtn) {
+    sDupBtn.onclick = () => {
+      const activeId = getActiveId();
+      if (!activeId) return;
+      const newClip = duplicateClip(activeId);
+      renderList();
+      if (newClip) goTo(newClip.id);
+    };
+  }
+
+  // Delete button in studio
+  const sDelBtn = $("#studioDelBtn");
+  if (sDelBtn) {
+    sDelBtn.onclick = () => {
+      const activeId = getActiveId();
+      if (!activeId) return;
+      removeClip(activeId);
+      renderList();
+      showToast("Clip deleted", true, () => {
+        restoreSnapshot();
+        renderList();
+      });
+    };
+  }
+
+  // Prev / Next clip navigation buttons in studio
+  const prevBtn = $("#studioPrevClipBtn");
+  if (prevBtn) prevBtn.onclick = prevClip;
+
+  const nextBtn = $("#studioNextClipBtn");
+  if (nextBtn) nextBtn.onclick = nextClip;
+
+  // Clicking an item in the mini navigator list in studio
+  const navList = $("#studioNavList");
+  if (navList) {
+    navList.addEventListener("click", e => {
+      const item = e.target.closest("[data-nav-id]");
+      if (item) {
+        goTo(+item.dataset.navId);
+      }
+    });
+  }
+}
+
+/* ---------- Setup Toolbar & Global UI Handlers ---------- */
 
 function setupToolbarEvents() {
   $("#addBtn").onclick = () => {
@@ -340,10 +638,16 @@ function setupToolbarEvents() {
     });
   };
 
-  $("#startOverBtn").onclick = () => {
+  $("#startOverBtn").onclick = async () => {
     const { clips } = getState();
     if (!clips.length) return;
-    if (!confirm("Clear everything and go back to the empty screen? You can undo this right after.")) return;
+    const confirmed = await showConfirm({
+      title: "Start over?",
+      message: "Clear all clips and go back to the empty screen? You can undo this right after.",
+      okText: "Clear everything",
+      isDanger: true
+    });
+    if (!confirmed) return;
     clearAll();
     renderList();
     showToast("Cleared", true, () => {
@@ -416,7 +720,7 @@ function setupImportEvents() {
   $("#fileInput").onchange = async e => {
     const f = e.target.files[0];
     if (!f) return;
-    const err = importText(await f.text());
+    const err = await importText(await f.text());
     if (err) alert(err);
     e.target.value = "";
   };
@@ -431,8 +735,8 @@ function setupImportEvents() {
 
   $("#pasteCancel").onclick = () => dlg.close();
 
-  $("#pasteLoad").onclick = () => {
-    const err = importText($("#pasteArea").value);
+  $("#pasteLoad").onclick = async () => {
+    const err = await importText($("#pasteArea").value);
     if (err) {
       $("#pasteErr").textContent = err;
     } else {
@@ -468,7 +772,7 @@ function setupImportEvents() {
       loadVideo(f);
       return;
     }
-    const err = importText(await f.text());
+    const err = await importText(await f.text());
     if (err) alert(err);
   });
 }
@@ -510,15 +814,86 @@ function setupKeyboardShortcuts() {
   window.addEventListener("keydown", e => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
     const tag = e.target.tagName;
-    if (["INPUT", "TEXTAREA", "SELECT", "VIDEO"].includes(tag) || e.target.closest("dialog")) {
+    const isEditingText = ["INPUT", "TEXTAREA"].includes(tag);
+
+    // Escape closes Studio Mode even if focusing an input
+    if (e.key === "Escape" && isStudioOpen()) {
+      e.preventDefault();
+      exitStudioMode();
       return;
     }
+
+    if (isEditingText || e.target.closest("dialog")) {
+      // Enter in studio title/inputs can approve & next if not multiline
+      if (e.key === "Enter" && isStudioOpen() && tag === "INPUT") {
+        e.preventDefault();
+        const activeId = getActiveId();
+        if (activeId) {
+          const res = toggleApproval(activeId);
+          renderList();
+          if (res?.approved) {
+            if (res.nextId !== null) goTo(res.nextId);
+            else nextClip();
+          }
+        }
+      }
+      return;
+    }
+
     if (tag === "BUTTON" && (e.key === " " || e.key === "Enter")) return;
 
     const k = e.key.toLowerCase();
+
+    // Studio Mode toggle with 'm'
+    if (k === "m") {
+      e.preventDefault();
+      if (hasVideo()) toggleStudioMode();
+      return;
+    }
+
+    // Toggle fullscreen with 'f' when in studio
+    if (k === "f" && isStudioOpen()) {
+      e.preventDefault();
+      const fsBtn = $("#studioFsBtn");
+      if (fsBtn) fsBtn.click();
+      return;
+    }
+
+    // Next / Prev clip
     if (k === "n") {
       e.preventDefault();
       nextToReview();
+      return;
+    }
+    if (e.key === "PageUp") {
+      e.preventDefault();
+      prevClip();
+      return;
+    }
+    if (e.key === "PageDown") {
+      e.preventDefault();
+      nextClip();
+      return;
+    }
+
+    // Add new clip with '+'
+    if (e.key === "+" || e.key === "=") {
+      e.preventDefault();
+      const cur = getCurrentTime();
+      const newClip = addClip();
+      newClip.start = fmt(cur);
+      newClip.end = fmt(cur + 30);
+      renderList();
+      goTo(newClip.id);
+      showToast(`Created clip at ${newClip.start}`);
+      return;
+    }
+
+    // Preview clip with 'p'
+    if (k === "p") {
+      e.preventDefault();
+      const activeId = getActiveId();
+      if (activeId) playClip(activeId);
       return;
     }
 
@@ -555,11 +930,13 @@ export function initApp() {
     {
       onRefresh: refresh,
       onSetActive: setActiveId,
-      getClipById: getClip
+      getClipById: getClip,
+      onStudioChange: () => refresh()
     }
   );
 
   setupListEvents();
+  setupStudioSidebarEvents();
   setupToolbarEvents();
   setupImportEvents();
   setupVideoEvents();
