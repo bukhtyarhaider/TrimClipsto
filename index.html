@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clip List Editor</title>
+  <link rel="stylesheet" href="./src/css/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>
+          <span class="logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2"/>
+              <path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>
+            </svg>
+          </span>
+          Clip List Editor
+        </h1>
+        <p>Open your clip file, fix titles, times and file names, then download the updated file. Nothing leaves your computer.</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="openBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>Open file
+        </button>
+        <button class="btn" id="pasteBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></svg>Paste
+        </button>
+        <button class="btn" id="loadVideoBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9.5 5 2.5-5 2.5z"/></svg>Load video
+        </button>
+        <button class="btn primary" id="downloadBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg><span id="dlLabel">Download</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="timeline" aria-label="Timeline of clips">
+      <div class="tl-head"><strong id="sumMain">0 clips</strong><span id="sumSub"></span></div>
+      <div class="prog"><i id="progFill"></i></div>
+      <div class="tl-bar" id="tlBar"></div>
+      <div class="tl-axis" id="tlAxis"></div>
+    </section>
+
+    <section class="vpanel" id="vpanel" hidden aria-label="Video preview">
+      <video id="vid" controls preload="metadata" playsinline></video>
+      <div class="vinfo">
+        <div class="vhead">
+          <div class="vname" id="vname"></div>
+          <button class="btn sm" id="vChange">Change</button>
+          <button class="btn sm" id="vClose">Remove</button>
+        </div>
+        <div class="vnow" id="vnow">00:00:00.000</div>
+        <div class="vstatus" id="vstatus"></div>
+        <div class="vactive" id="vactive"></div>
+        <div class="vfix" id="vfix" hidden>
+          <p>Your browser can't show this video's picture (often H.265/HEVC or AV1). Timestamps are identical in a smaller copy, so make one just for checking:</p>
+          <pre id="vcmd">ffmpeg -i "your-video.mp4" -vf scale=-2:480 -c:v libx264 -preset veryfast -crf 28 -c:a aac "preview.mp4"</pre>
+          <button class="btn" id="vCopyCmd">Copy command</button>
+        </div>
+        <div class="vctrl">
+          <label class="vloop"><input type="checkbox" id="loopChk"> Loop clip</label>
+          <label class="vloop">Speed
+            <select id="rateSel">
+              <option value="0.5">0.5×</option>
+              <option value="0.75">0.75×</option>
+              <option value="1" selected>1×</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2×</option>
+            </select>
+          </label>
+        </div>
+        <div class="vkeys">
+          <span><kbd>Space</kbd>Play / pause</span>
+          <span><kbd>←</kbd><kbd>→</kbd>Skip 1 s (Shift: 5 s)</span>
+          <span><kbd>,</kbd><kbd>.</kbd>One frame</span>
+          <span><kbd>I</kbd>Set start</span>
+          <span><kbd>O</kbd>Set end</span>
+          <span><kbd>N</kbd>Next to review</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="toolbar subtools" style="margin-bottom:14px">
+      <button class="btn accent" id="nextBtn">Next to review</button>
+      <button class="btn" id="sortBtn">Sort by start time</button>
+      <button class="btn" id="renameAllBtn">Suggest all file names</button>
+      <button class="btn" id="resetApprBtn">Reset approvals</button>
+      <button class="btn" id="startOverBtn" style="margin-left:auto">Start over</button>
+    </div>
+
+    <div id="list">
+      <div id="emptyBox"></div>
+      <section class="group" id="revSec" hidden>
+        <h2 class="ghead">To review <span class="count" id="revCount">0</span></h2>
+        <div class="list" id="revList"></div>
+        <p class="allgood" id="allGood" hidden>Every clip is approved. Download your file when you're ready.</p>
+        <button class="btn add" id="addBtn">+ Add a clip</button>
+      </section>
+      <details class="donesec group" id="doneSec" open hidden>
+        <summary class="ghead">Approved and locked <span class="count" id="doneCount">0</span></summary>
+        <div class="list" id="doneList"></div>
+      </details>
+    </div>
+
+    <details id="pvDetails">
+      <summary>Preview the file you'll download</summary>
+      <div class="pv">
+        <div class="pv-bar"><span>This is exactly what gets saved.</span><button class="btn" id="copyBtn">Copy</button></div>
+        <pre id="preview"></pre>
+      </div>
+    </details>
+  </div>
+
+  <input type="file" id="fileInput" accept=".json,application/json" hidden>
+  <input type="file" id="videoInput" accept="video/*,.mkv,.mov,.m4v" hidden>
+
+  <dialog id="pasteDlg">
+    <h2>Paste your clip list</h2>
+    <p>Paste the text from your JSON file. It replaces what you have now (you can undo).</p>
+    <textarea id="pasteArea" spellcheck="false" placeholder='[ { "title": "...", "start": "00:00:00.000", "end": "00:00:10.000", "output_name": "clip_01.mp4" } ]'></textarea>
+    <div class="dlg-err" id="pasteErr"></div>
+    <div class="dlg-act">
+      <button class="btn" id="pasteCancel">Cancel</button>
+      <button class="btn primary" id="pasteLoad">Load clips</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <span id="toastMsg"></span>
+    <button id="toastUndo" hidden>Undo</button>
+  </div>
+  <div class="drop" id="drop">Drop your clip file (.json) or your video</div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
