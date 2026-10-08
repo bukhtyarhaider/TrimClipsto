@@ -179,6 +179,10 @@ async function importText(text) {
 }
 
 function setFromVideo(field) {
+  if (!hasVideo()) {
+    showToast("Load a video first to set trim marks");
+    return;
+  }
   const activeId = getActiveId();
   const c = getClip(activeId);
   if (!c) {
@@ -395,7 +399,25 @@ function setupStudioSidebarEvents() {
   if (topStudioBtn) topStudioBtn.onclick = enterStudioMode;
 
   const dropZone = $("#studioDropZone");
-  if (dropZone) dropZone.onclick = () => $("#videoInput").click();
+  if (dropZone) {
+    dropZone.onclick = () => $("#videoInput").click();
+    dropZone.addEventListener("dragover", e => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+    dropZone.addEventListener("dragleave", e => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+    });
+    dropZone.addEventListener("drop", e => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const f = e.dataTransfer?.files?.[0];
+      if (f && (/^video\//.test(f.type) || /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(f.name))) {
+        loadVideo(f);
+      }
+    });
+  }
 
   // Title edit in studio
   const sTitle = $("#studioTitleInp");

@@ -54,7 +54,7 @@
       <div class="studio-header" id="studioHeader">
         <div class="studio-title-box">
           <span class="studio-badge">STUDIO MODE</span>
-          <span class="studio-vname" id="studioVname">video.mp4</span>
+          <span class="studio-vname" id="studioVname">No video loaded</span>
         </div>
         <div class="studio-stats" id="studioStats">0 clips</div>
         <div class="studio-top-actions">
@@ -77,7 +77,7 @@
             <h3>No video loaded</h3>
             <p>Click here or drop your video (.mp4, .mov, .mkv) to preview and set trim marks</p>
           </div>
-          <video id="vid" controls preload="metadata" playsinline></video>
+          <video id="vid" controls preload="metadata" playsinline hidden></video>
           <div class="vfix" id="vfix" hidden>
             <p>Your browser can't show this video's picture (often H.265/HEVC or AV1). Timestamps are identical in a smaller copy, so make one just for checking:</p>
             <pre id="vcmd">ffmpeg -i "your-video.mp4" -vf scale=-2:480 -c:v libx264 -preset veryfast -crf 28 -c:a aac "preview.mp4"</pre>

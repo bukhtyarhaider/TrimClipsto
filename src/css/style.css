@@ -24,6 +24,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -906,22 +910,28 @@ kbd {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 44px 28px;
   text-align: center;
   color: #94a3b8;
   cursor: pointer;
   border: 2px dashed #334155;
-  border-radius: 10px;
-  margin: 20px;
-  width: calc(100% - 40px);
-  background: rgba(15, 23, 42, 0.6);
-  transition: all 0.2s ease;
+  border-radius: 12px;
+  max-width: 520px;
+  width: 90%;
+  margin: auto;
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
 }
 
-.studio-drop-placeholder:hover {
+.studio-drop-placeholder:hover,
+.studio-drop-placeholder.dragover {
   border-color: #38bdf8;
-  background: rgba(15, 23, 42, 0.85);
-  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.9);
+  color: #f1f5f9;
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.25);
+  transform: translateY(-2px);
 }
 
 .studio-drop-placeholder svg {
@@ -943,7 +953,15 @@ kbd {
   color: #94a3b8;
 }
 
+.studio-drop-placeholder[hidden],
+body.has-video .studio-drop-placeholder,
 .vpanel:not(.studio-mode) .studio-drop-placeholder {
+  display: none !important;
+}
+
+#vid[hidden],
+body:not(.has-video) #vid,
+body:not(.has-video) .vpanel video {
   display: none !important;
 }
 
@@ -954,6 +972,11 @@ kbd {
   object-fit: contain;
   background: #000;
   border-radius: 10px;
+}
+
+body:not(.has-video) .vpanel.studio-mode .studio-transport {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 /* Studio Transport Bar */

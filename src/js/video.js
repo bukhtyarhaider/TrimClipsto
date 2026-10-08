@@ -23,6 +23,9 @@ let onStudioChangeCb = null;
 
 export function initVideoPlayer(elements, hooks) {
   vid = elements.video;
+  if (vid) vid.hidden = true;
+  const dropZone = document.getElementById("studioDropZone");
+  if (dropZone) dropZone.hidden = false;
   onTimeUpdateCb = hooks.onTimeUpdate;
   onStatusChangeCb = hooks.onStatusChange;
   onRefreshCb = hooks.onRefresh;
@@ -90,8 +93,13 @@ export function enterStudioMode() {
   }
   document.body.classList.add("studio-open");
 
+  const has = hasVideo();
   const dropZone = document.getElementById("studioDropZone");
-  if (dropZone) dropZone.hidden = Boolean(videoDur);
+  if (dropZone) dropZone.hidden = has;
+  if (vid) vid.hidden = !has;
+
+  const sVname = document.getElementById("studioVname");
+  if (sVname && !has) sVname.textContent = "No video loaded";
 
   // Sync controls
   const loopChk = document.getElementById("loopChk");
@@ -280,6 +288,7 @@ export function loadVideo(file) {
 
   const dropZone = document.getElementById("studioDropZone");
   if (dropZone) dropZone.hidden = true;
+  if (vid) vid.hidden = false;
 
   const rateSel = document.getElementById("rateSel");
   if (rateSel) vid.defaultPlaybackRate = +rateSel.value;
@@ -298,6 +307,7 @@ export function removeVideo() {
   if (vid) {
     vid.removeAttribute("src");
     vid.load();
+    vid.hidden = true;
   }
 
   const vpanelEl = document.getElementById("vpanel");
@@ -308,6 +318,12 @@ export function removeVideo() {
 
   const dropZone = document.getElementById("studioDropZone");
   if (dropZone) dropZone.hidden = false;
+
+  const sVname = document.getElementById("studioVname");
+  if (sVname) sVname.textContent = "No video loaded";
+
+  const vnameEl = document.getElementById("vname");
+  if (vnameEl) vnameEl.textContent = "";
 
   document.body.classList.remove("has-video");
   if (onRefreshCb) onRefreshCb();
