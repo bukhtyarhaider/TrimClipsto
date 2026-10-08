@@ -93,7 +93,7 @@ export function Header() {
               Trim Clipsto
             </h1>
             <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
-              React + TS
+              Trim it all
             </span>
           </div>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 max-w-xl leading-relaxed">

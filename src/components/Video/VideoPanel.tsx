@@ -28,6 +28,7 @@ import {
   Check,
   Target,
   Film,
+  Video,
   RotateCcw,
   Sun,
   Moon,
@@ -37,6 +38,8 @@ interface VideoPanelProps {
   videoRef: React.RefObject<HTMLVideoElement>;
   videoHandlers: {
     onLoadedMetadata: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
+    onDurationChange?: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
+    onCanPlay?: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
     onPlay: () => void;
     onPause: () => void;
     onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
@@ -115,6 +118,7 @@ export function VideoPanel({
     const file = e.target.files?.[0];
     if (file) {
       loadVideoFile(file);
+      showToast(`Loaded video: ${file.name}`);
     }
     e.target.value = "";
   };
@@ -231,12 +235,22 @@ export function VideoPanel({
         {/* Studio Top Header */}
         <header className="h-14 px-5 border-b border-zinc-200 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-900/95 flex items-center justify-between shrink-0 select-none backdrop-blur-md transition-colors">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-500/20">
+            <span className="px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-500/20 shrink-0">
               STUDIO MODE
             </span>
-            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-md">
+            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-xs sm:max-w-md" title={videoFile?.name}>
               {videoFile?.name || "No video loaded"}
             </span>
+            {videoFile && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium shrink-0"
+                title="Choose a different video file"
+              >
+                Change
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -245,6 +259,17 @@ export function VideoPanel({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Load / Change Video Button in Studio Header */}
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Video className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                onClick={() => fileInputRef.current?.click()}
+                title={videoFile ? "Change loaded video" : "Load video file"}
+              >
+                {videoFile ? "Change video" : "Load video"}
+              </Button>
+
               {/* Theme Toggle Button */}
               <Button
                 variant="secondary"
@@ -301,15 +326,45 @@ export function VideoPanel({
                   {...videoHandlers}
                 />
               ) : (
-                <label className="flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:bg-zinc-800/30 dark:hover:bg-zinc-900/60 transition-colors w-full h-full">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-800/80 dark:bg-zinc-900 border border-zinc-700/80 dark:border-zinc-800 text-blue-400 flex items-center justify-center mb-3 shadow-lg">
-                    <Film className="w-6 h-6" />
+                <div
+                  id="studio-drop-zone"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) {
+                      loadVideoFile(f);
+                      showToast(`Loaded video: ${f.name}`);
+                    }
+                  }}
+                  className="flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:bg-zinc-800/40 dark:hover:bg-zinc-900/60 transition-colors w-full h-full select-none gap-3.5 group"
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-zinc-800/90 dark:bg-zinc-900 border border-zinc-700/80 dark:border-zinc-800 text-blue-400 flex items-center justify-center shadow-lg group-hover:scale-105 group-hover:border-blue-500/60 transition-all">
+                    <Video className="w-7 h-7" />
                   </div>
-                  <h4 className="text-sm font-semibold text-zinc-100">No video loaded</h4>
-                  <p className="text-xs text-zinc-400 mt-1 max-w-xs">
-                    Click here or drop your video to preview and set trim marks
-                  </p>
-                </label>
+                  <div className="space-y-1">
+                    <h4 className="text-base font-semibold text-zinc-100">No video loaded</h4>
+                    <p className="text-xs text-zinc-400 max-w-sm">
+                      Click anywhere here or drop your video file (.mp4, .mov, .mkv, .webm)
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Upload className="w-3.5 h-3.5" />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    Choose video file
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -328,6 +383,15 @@ export function VideoPanel({
                     <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
                       / {fmt(videoDuration)}
                     </span>
+                  )}
+                  {videoUrl && (
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      icon={<RefreshCw className="w-3 h-3 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200" />}
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Change video file"
+                    />
                   )}
                 </div>
 

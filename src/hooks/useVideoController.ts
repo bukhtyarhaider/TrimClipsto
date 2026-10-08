@@ -51,11 +51,20 @@ export function useVideoController() {
   const handleLoadedMetadata = useCallback(
     (e: React.SyntheticEvent<HTMLVideoElement>) => {
       const vid = e.currentTarget;
-      const dur = vid.duration || 0;
-      setVideoDuration(dur);
+      const dur = vid.duration;
+      if (dur && !isNaN(dur) && isFinite(dur)) {
+        setVideoDuration(dur);
+      }
       vid.playbackRate = useClipStore.getState().playbackRate;
+      const savedTime = useClipStore.getState().currentTime;
+      if (savedTime > 0 && dur && savedTime <= dur) {
+        vid.currentTime = savedTime;
+      }
+      if (dur && isFinite(dur)) {
+        setStatus(`Video ready (${dur.toFixed(1)}s)`);
+      }
     },
-    [setVideoDuration]
+    [setVideoDuration, setStatus]
   );
 
   const handlePlay = useCallback(() => {
@@ -188,6 +197,8 @@ export function useVideoController() {
     videoRef,
     videoHandlers: {
       onLoadedMetadata: handleLoadedMetadata,
+      onDurationChange: handleLoadedMetadata,
+      onCanPlay: handleLoadedMetadata,
       onPlay: handlePlay,
       onPause: handlePause,
       onTimeUpdate: handleTimeUpdate,
