@@ -1,5 +1,6 @@
 import React, { useRef, useMemo, useEffect, useState } from "react";
 import { useClipStore } from "../../store/useClipStore";
+import { useThemeStore } from "../../store/useThemeStore";
 import { toSec, fmt, human, short } from "../../utils/time";
 import { getColor } from "../../utils/constants";
 import { validateClips } from "../../utils/validation";
@@ -28,6 +29,8 @@ import {
   Target,
   Film,
   RotateCcw,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 interface VideoPanelProps {
@@ -87,6 +90,8 @@ export function VideoPanel({
     suggestClipName,
     showToast,
   } = useClipStore();
+
+  const { theme, toggleTheme } = useThemeStore();
 
   const validationResults = useMemo(() => {
     return validateClips(clips, videoDuration);
@@ -213,7 +218,7 @@ export function VideoPanel({
     return (
       <div
         ref={containerRef}
-        className="fixed inset-0 z-50 flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden animate-in fade-in duration-150"
+        className="fixed inset-0 z-50 flex flex-col bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden animate-in fade-in duration-150 transition-colors"
       >
         <input
           ref={fileInputRef}
@@ -224,22 +229,39 @@ export function VideoPanel({
         />
 
         {/* Studio Top Header */}
-        <header className="h-14 px-5 border-b border-zinc-800/80 bg-zinc-900/95 flex items-center justify-between shrink-0 select-none backdrop-blur-md">
+        <header className="h-14 px-5 border-b border-zinc-200 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-900/95 flex items-center justify-between shrink-0 select-none backdrop-blur-md transition-colors">
           <div className="flex items-center gap-3 min-w-0">
             <span className="px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-500/20">
               STUDIO MODE
             </span>
-            <span className="text-xs font-medium text-zinc-300 truncate max-w-md">
+            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-md">
               {videoFile?.name || "No video loaded"}
             </span>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="text-xs text-zinc-400 font-medium hidden sm:block">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium hidden sm:block">
               {approvedCount} of {clips.length} approved
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Theme Toggle Button */}
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={
+                  theme === "dark" ? (
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  ) : (
+                    <Moon className="w-3.5 h-3.5 text-indigo-600" />
+                  )
+                }
+                onClick={toggleTheme}
+                title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
+              >
+                {theme === "dark" ? "Light" : "Dark"}
+              </Button>
+
               <Button
                 variant="secondary"
                 size="sm"
@@ -266,8 +288,8 @@ export function VideoPanel({
         {/* Studio Body: Left Video + Transport, Right Inspector */}
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
           {/* Left Column: Video Stage + Transport */}
-          <div className="flex-1 flex flex-col bg-black/95 p-3 sm:p-5 overflow-hidden">
-            <div className="flex-1 relative flex items-center justify-center min-h-0 bg-zinc-950 rounded-2xl border border-zinc-800/80 overflow-hidden shadow-2xl group">
+          <div className="flex-1 flex flex-col bg-zinc-200/50 dark:bg-black/95 p-3 sm:p-5 overflow-hidden transition-colors">
+            <div className="flex-1 relative flex items-center justify-center min-h-0 bg-zinc-900 dark:bg-zinc-950 rounded-2xl border border-zinc-300 dark:border-zinc-800/80 overflow-hidden shadow-xl group">
               {videoUrl ? (
                 <video
                   ref={videoRef}
@@ -279,12 +301,12 @@ export function VideoPanel({
                   {...videoHandlers}
                 />
               ) : (
-                <label className="flex flex-col items-center justify-center p-8 text-center text-zinc-500 cursor-pointer hover:bg-zinc-900/60 transition-colors w-full h-full">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 text-blue-400 flex items-center justify-center mb-3 shadow-lg">
+                <label className="flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:bg-zinc-800/30 dark:hover:bg-zinc-900/60 transition-colors w-full h-full">
+                  <div className="w-14 h-14 rounded-2xl bg-zinc-800/80 dark:bg-zinc-900 border border-zinc-700/80 dark:border-zinc-800 text-blue-400 flex items-center justify-center mb-3 shadow-lg">
                     <Film className="w-6 h-6" />
                   </div>
-                  <h4 className="text-sm font-semibold text-zinc-200">No video loaded</h4>
-                  <p className="text-xs text-zinc-500 mt-1 max-w-xs">
+                  <h4 className="text-sm font-semibold text-zinc-100">No video loaded</h4>
+                  <p className="text-xs text-zinc-400 mt-1 max-w-xs">
                     Click here or drop your video to preview and set trim marks
                   </p>
                 </label>
@@ -292,18 +314,18 @@ export function VideoPanel({
             </div>
 
             {/* Studio Transport Controls Below Video */}
-            <div className="mt-3 p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 space-y-3 shrink-0 shadow-lg">
+            <div className="mt-3 p-3.5 rounded-2xl bg-white/95 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800/80 space-y-3 shrink-0 shadow-md transition-colors">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 {/* Playhead Timecode */}
                 <div className="flex items-center gap-2.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 bg-zinc-800/90 px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700/60 px-2 py-0.5 rounded">
                     PLAYHEAD
                   </span>
-                  <span className="font-mono text-xl font-bold text-blue-400 tracking-tight">
+                  <span className="font-mono text-xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">
                     {fmt(currentTime)}
                   </span>
                   {videoDuration > 0 && (
-                    <span className="text-xs font-mono text-zinc-500">
+                    <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
                       / {fmt(videoDuration)}
                     </span>
                   )}
@@ -366,21 +388,21 @@ export function VideoPanel({
 
                 {/* Loop & Speed */}
                 <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1.5 text-xs text-zinc-300 cursor-pointer select-none">
+                  <label className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={isLooping}
                       onChange={e => setIsLooping(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded bg-zinc-800 border-zinc-700 text-blue-500 focus:ring-0 cursor-pointer"
+                      className="w-3.5 h-3.5 rounded bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-blue-600 focus:ring-0 cursor-pointer"
                     />
                     <span>Loop</span>
                   </label>
 
-                  <div className="flex items-center gap-1 text-xs text-zinc-400">
+                  <div className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400">
                     <select
                       value={playbackRate}
                       onChange={e => setPlaybackRate(Number(e.target.value))}
-                      className="bg-zinc-800/90 text-zinc-200 border border-zinc-700 text-xs rounded px-2 py-0.5 focus:outline-none cursor-pointer"
+                      className="bg-white dark:bg-zinc-800/90 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 text-xs rounded px-2 py-0.5 focus:outline-none cursor-pointer shadow-xs"
                     >
                       <option value={0.5}>0.5×</option>
                       <option value={0.75}>0.75×</option>
@@ -397,13 +419,13 @@ export function VideoPanel({
               <div
                 ref={scrubBarRef}
                 onMouseDown={handleScrubMouseDown}
-                className="relative h-4 w-full bg-zinc-950 rounded-lg border border-zinc-800 cursor-crosshair select-none overflow-hidden"
+                className="relative h-4 w-full bg-zinc-100 dark:bg-zinc-950 rounded-lg border border-zinc-300 dark:border-zinc-800 cursor-crosshair select-none overflow-hidden"
                 title="Click or drag to scrub playhead"
               >
                 {/* Active Clip Trim Range */}
                 {hasValidRange && (
                   <div
-                    className="absolute top-0 bottom-0 bg-blue-500/35 border-x-2 border-blue-400 pointer-events-none transition-all duration-75"
+                    className="absolute top-0 bottom-0 bg-blue-500/35 border-x-2 border-blue-500 pointer-events-none transition-all duration-75"
                     style={{
                       left: `${rangeLeft}%`,
                       width: `${rangeWidth}%`,
@@ -414,7 +436,7 @@ export function VideoPanel({
                 {/* Playhead Needle */}
                 {videoDuration > 0 && (
                   <div
-                    className="absolute top-0 bottom-0 w-1 bg-white shadow-lg shadow-white/80 pointer-events-none z-10 transition-transform duration-75"
+                    className="absolute top-0 bottom-0 w-1 bg-rose-500 dark:bg-white shadow-md shadow-rose-500/50 dark:shadow-white/80 pointer-events-none z-10 transition-transform duration-75"
                     style={{
                       left: `${Math.min(100, Math.max(0, (currentTime / videoDuration) * 100))}%`,
                     }}
@@ -430,11 +452,11 @@ export function VideoPanel({
           </div>
 
           {/* Right Column: Studio Inspector & Mini Navigator */}
-          <aside className="w-full lg:w-96 border-l border-zinc-800/80 bg-zinc-900/70 p-4 sm:p-5 flex flex-col gap-4 overflow-y-auto shrink-0 shadow-xl">
+          <aside className="w-full lg:w-96 border-l border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/70 p-4 sm:p-5 flex flex-col gap-4 overflow-y-auto shrink-0 shadow-xl transition-colors">
             {/* Inspector Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800/80">
               <div className="flex items-center gap-2.5">
-                <h3 className="text-sm font-semibold text-zinc-100">Clip Inspector</h3>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Clip Inspector</h3>
                 {curClip && (
                   <span
                     className="px-2 py-0.5 text-xs font-bold rounded-md text-zinc-950 shadow-xs"
@@ -469,7 +491,7 @@ export function VideoPanel({
               <div className="space-y-4">
                 {/* Title Input */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Clip Title</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Clip Title</label>
                   <input
                     type="text"
                     value={curClip.title}
@@ -481,19 +503,19 @@ export function VideoPanel({
                       }
                     }}
                     placeholder="What happens in this clip?"
-                    className="w-full text-xs p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/50"
+                    className="w-full text-xs p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/50 shadow-xs transition-colors"
                   />
                 </div>
 
                 {/* Trim Marks Box */}
-                <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800 space-y-3">
+                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-800 space-y-3 transition-colors">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-zinc-200">Trim Marks</span>
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Trim Marks</span>
                     <span
                       className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
                         curVal.dur !== null && !hasErrors
-                          ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                          : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                          ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
+                          : "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
                       }`}
                     >
                       {curVal.dur !== null ? human(curVal.dur) : "Invalid"}
@@ -502,8 +524,8 @@ export function VideoPanel({
 
                   <div className="grid grid-cols-2 gap-3">
                     {/* IN POINT */}
-                    <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800/80 space-y-2">
-                      <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400">
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/80 space-y-2 shadow-xs transition-colors">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
                         <span>IN POINT</span>
                         <button
                           type="button"
@@ -511,7 +533,7 @@ export function VideoPanel({
                             const s = toSec(curClip.start);
                             if (s !== null) seekTo(s);
                           }}
-                          className="text-blue-400 hover:underline cursor-pointer"
+                          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                         >
                           Seek
                         </button>
@@ -522,7 +544,7 @@ export function VideoPanel({
                         onChange={e => updateClip(curClip.id, { start: e.target.value })}
                         onKeyDown={e => handleTimeKeyDown(e, "start")}
                         placeholder="00:00:00.000"
-                        className="w-full text-xs font-mono p-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-blue-500/50"
+                        className="w-full text-xs font-mono p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50"
                         title="Press ↑ / ↓ to nudge 1s (Shift: 10s)"
                       />
                       <Button
@@ -541,8 +563,8 @@ export function VideoPanel({
                     </div>
 
                     {/* OUT POINT */}
-                    <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800/80 space-y-2">
-                      <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400">
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/80 space-y-2 shadow-xs transition-colors">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
                         <span>OUT POINT</span>
                         <button
                           type="button"
@@ -550,7 +572,7 @@ export function VideoPanel({
                             const e = toSec(curClip.end);
                             if (e !== null) seekTo(e);
                           }}
-                          className="text-blue-400 hover:underline cursor-pointer"
+                          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                         >
                           Seek
                         </button>
@@ -561,7 +583,7 @@ export function VideoPanel({
                         onChange={e => updateClip(curClip.id, { end: e.target.value })}
                         onKeyDown={e => handleTimeKeyDown(e, "end")}
                         placeholder="00:00:00.000"
-                        className="w-full text-xs font-mono p-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-blue-500/50"
+                        className="w-full text-xs font-mono p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50"
                         title="Press ↑ / ↓ to nudge 1s (Shift: 10s)"
                       />
                       <Button
@@ -584,11 +606,11 @@ export function VideoPanel({
                 {/* Output File Name */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-zinc-400">Output File Name</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Output File Name</label>
                     <button
                       type="button"
                       onClick={() => suggestClipName(curClip.id)}
-                      className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 cursor-pointer"
                     >
                       <Wand2 className="w-3 h-3" />
                       <span>Suggest Name</span>
@@ -599,7 +621,7 @@ export function VideoPanel({
                     value={curClip.output_name}
                     onChange={e => updateClip(curClip.id, { output_name: e.target.value })}
                     placeholder="clip_01_name.mp4"
-                    className="w-full text-xs font-mono p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/50"
+                    className="w-full text-xs font-mono p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/50 shadow-xs transition-colors"
                   />
                 </div>
 
@@ -611,8 +633,8 @@ export function VideoPanel({
                         key={idx}
                         className={`text-[11px] p-2 rounded-lg border leading-tight ${
                           iss.l === "err"
-                            ? "bg-rose-500/10 text-rose-300 border-rose-500/20"
-                            : "bg-amber-500/10 text-amber-300 border-amber-500/20"
+                            ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/20"
+                            : "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/20"
                         }`}
                       >
                         {iss.t}
@@ -622,7 +644,7 @@ export function VideoPanel({
                 )}
 
                 {/* Action Buttons */}
-                <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+                <div className="space-y-2 pt-2 border-t border-zinc-200 dark:border-zinc-800/80">
                   <Button
                     variant={curClip.ok ? "secondary" : "primary"}
                     size="md"
@@ -645,9 +667,9 @@ export function VideoPanel({
                       size="sm"
                       icon={
                         isCurrentClipPlaying ? (
-                          <Square className="w-3.5 h-3.5 fill-current text-indigo-400" />
+                          <Square className="w-3.5 h-3.5 fill-current text-indigo-600 dark:text-indigo-400" />
                         ) : (
-                          <Play className="w-3.5 h-3.5 fill-current text-zinc-300" />
+                          <Play className="w-3.5 h-3.5 fill-current text-zinc-600 dark:text-zinc-300" />
                         )
                       }
                       kbd="P"
@@ -681,7 +703,7 @@ export function VideoPanel({
                     <Button
                       variant="ghost"
                       size="xs"
-                      className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                      className="text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                       icon={<Trash2 className="w-3 h-3" />}
                       onClick={() => removeClip(curClip.id)}
                     >
@@ -692,7 +714,7 @@ export function VideoPanel({
               </div>
             ) : (
               <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                <p className="text-xs text-zinc-400">No clips in project yet.</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">No clips in project yet.</p>
                 <Button
                   variant="primary"
                   size="sm"
@@ -705,12 +727,12 @@ export function VideoPanel({
             )}
 
             {/* Mini Clips Navigator Section */}
-            <div className="pt-3 border-t border-zinc-800/80 flex-1 flex flex-col min-h-[160px]">
+            <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800/80 flex-1 flex flex-col min-h-[160px]">
               <div className="flex items-center justify-between pb-2 text-xs">
-                <span className="font-semibold text-zinc-300">
+                <span className="font-semibold text-zinc-800 dark:text-zinc-300">
                   All Clips ({clips.length})
                 </span>
-                <span className="text-[10px] text-zinc-500">Click to switch & seek</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Click to switch & seek</span>
               </div>
 
               <div className="flex-1 space-y-1.5 overflow-y-auto max-h-56 pr-1">
@@ -730,8 +752,8 @@ export function VideoPanel({
                       }}
                       className={`flex items-center gap-2 p-2 rounded-xl text-xs cursor-pointer border transition-all ${
                         isActive
-                          ? "bg-zinc-800/90 border-blue-500 text-white shadow-sm ring-1 ring-blue-500/50"
-                          : "bg-zinc-950/60 border-zinc-800/60 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                          ? "bg-blue-50 dark:bg-zinc-800/90 border-blue-500 text-zinc-900 dark:text-white shadow-xs ring-1 ring-blue-500/50"
+                          : "bg-zinc-50 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-800/60 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200"
                       }`}
                     >
                       <span
@@ -741,16 +763,16 @@ export function VideoPanel({
                         {i + 1}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate text-zinc-200">
+                        <p className="font-medium truncate text-zinc-900 dark:text-zinc-200">
                           {c.title || "Untitled"}
                         </p>
-                        <p className="text-[10px] text-zinc-500 font-mono">
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                           {short(toSec(c.start) || 0)} → {short(toSec(c.end) || 0)}{" "}
                           {len && `(${len})`}
                         </p>
                       </div>
                       {c.ok && (
-                        <span className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                        <span className="p-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                           <Check className="w-3.5 h-3.5" />
                         </span>
                       )}
@@ -761,24 +783,24 @@ export function VideoPanel({
             </div>
 
             {/* Shortcuts Reference Guide */}
-            <div className="pt-2 border-t border-zinc-800/80 grid grid-cols-3 gap-1 text-[10px] text-zinc-400">
-              <span className="bg-zinc-950/60 p-1 rounded text-center">
-                <kbd className="text-[9px] bg-zinc-800 px-1 py-0.5 rounded mr-0.5">Space</kbd> Play
+            <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800/80 grid grid-cols-3 gap-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+              <span className="bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80 p-1 rounded text-center">
+                <kbd className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.5 rounded mr-0.5">Space</kbd> Play
               </span>
-              <span className="bg-zinc-950/60 p-1 rounded text-center">
-                <kbd className="text-[9px] bg-zinc-800 px-1 py-0.5 rounded mr-0.5">I</kbd> Set In
+              <span className="bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80 p-1 rounded text-center">
+                <kbd className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.5 rounded mr-0.5">I</kbd> Set In
               </span>
-              <span className="bg-zinc-950/60 p-1 rounded text-center">
-                <kbd className="text-[9px] bg-zinc-800 px-1 py-0.5 rounded mr-0.5">O</kbd> Set Out
+              <span className="bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80 p-1 rounded text-center">
+                <kbd className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.5 rounded mr-0.5">O</kbd> Set Out
               </span>
-              <span className="bg-zinc-950/60 p-1 rounded text-center">
-                <kbd className="text-[9px] bg-zinc-800 px-1 py-0.5 rounded mr-0.5">,</kbd><kbd className="text-[9px] bg-zinc-800 px-1 py-0.5 rounded mr-0.5">.</kbd> Frame
+              <span className="bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80 p-1 rounded text-center">
+                <kbd className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.5 rounded mr-0.5">,</kbd><kbd className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.5 rounded mr-0.5">.</kbd> Frame
               </span>
-              <span className="bg-zinc-950/60 p-1 rounded text-center">
-                <kbd className="text-[9px] bg-zinc-800 px-1 py-0.5 rounded mr-0.5">N</kbd> Next
+              <span className="bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80 p-1 rounded text-center">
+                <kbd className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.5 rounded mr-0.5">N</kbd> Next
               </span>
-              <span className="bg-zinc-950/60 p-1 rounded text-center">
-                <kbd className="text-[9px] bg-zinc-800 px-1 py-0.5 rounded mr-0.5">Esc</kbd> Exit
+              <span className="bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80 p-1 rounded text-center">
+                <kbd className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.5 rounded mr-0.5">Esc</kbd> Exit
               </span>
             </div>
           </aside>

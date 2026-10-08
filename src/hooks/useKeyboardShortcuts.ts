@@ -57,8 +57,8 @@ export function useKeyboardShortcuts({
         }
       }
 
-      // Enter in studio input approves & goes to next clip
-      if (e.key === "Enter" && isStudioOpen && isEditingText && tag === "INPUT") {
+      // Enter in studio mode approves & goes to next clip (unless on a button)
+      if (e.key === "Enter" && isStudioOpen && tag !== "BUTTON") {
         e.preventDefault();
         if (activeId) {
           const res = toggleApproval(activeId);
