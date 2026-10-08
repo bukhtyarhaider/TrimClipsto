@@ -2,14 +2,13 @@
  * Clip validation rules and filename generator helpers.
  */
 
-import { toSec, fmt, pad } from "./time.js";
+import { toSec, fmt, pad } from "./time";
+import { Clip, ClipValidation, ValidationIssue } from "../types";
 
 /**
  * Creates a clean slug from a clip title, filtering common stop words.
- * @param {string} title
- * @returns {string}
  */
-export function slug(title) {
+export function slug(title: string): string {
   const stop = new Set(["the", "a", "an", "and", "of", "to", "at", "in", "on", "for"]);
   const t = String(title || "")
     .replace(/\([^)]*\)/g, " ")
@@ -33,22 +32,20 @@ export function slug(title) {
 
 /**
  * Suggests a structured filename for a clip based on its index and title.
- * @param {string} title
- * @param {number} index - 0-based index
- * @param {number} totalClips - Total number of clips
- * @returns {string} E.g., "clip_01_intro.mp4"
+ * @param title - Clip title
+ * @param index - 0-based index
+ * @param totalClips - Total number of clips
+ * @returns E.g., "clip_01_intro.mp4"
  */
-export function suggestName(title, index, totalClips = 10) {
+export function suggestName(title: string, index: number, totalClips = 10): string {
   const width = Math.max(2, String(totalClips).length);
   return `clip_${pad(index + 1, width)}_${slug(title)}.mp4`;
 }
 
 /**
  * Cleans a filename: removes invalid OS characters, replaces spaces, ensures .mp4 suffix.
- * @param {string} val
- * @returns {string}
  */
-export function cleanFileName(val) {
+export function cleanFileName(val: string): string {
   let v = String(val || "")
     .trim()
     .replace(/\s+/g, "_")
@@ -59,19 +56,16 @@ export function cleanFileName(val) {
 
 /**
  * Validates a list of clips against formatting rules, duplicates, video boundaries, and overlaps.
- * @param {Array<object>} clips
- * @param {number} [videoDur=0]
- * @returns {Array<object>} Array of validation descriptors { issues, s, e, dur }
  */
-export function validateClips(clips, videoDur = 0) {
-  const names = {};
+export function validateClips(clips: Clip[], videoDur = 0): ClipValidation[] {
+  const names: Record<string, number> = {};
   clips.forEach(c => {
     const k = (c.output_name || "").trim().toLowerCase();
     if (k) names[k] = (names[k] || 0) + 1;
   });
 
   return clips.map((c, i) => {
-    const issues = [];
+    const issues: ValidationIssue[] = [];
     const s = toSec(c.start);
     const e = toSec(c.end);
 
@@ -119,7 +113,7 @@ export function validateClips(clips, videoDur = 0) {
       issues,
       s,
       e,
-      dur: s !== null && e !== null && e > s ? e - s : null
+      dur: s !== null && e !== null && e > s ? e - s : null,
     };
   });
 }
