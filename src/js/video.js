@@ -21,6 +21,10 @@ let onSetActiveCb = null;
 let getClipByIdCb = null;
 let onStudioChangeCb = null;
 
+let currentLoadedFile = null;
+let mediaInspectInfo = null;
+let fixDismissed = false;
+
 export function initVideoPlayer(elements, hooks) {
   vid = elements.video;
   if (vid) vid.hidden = true;
@@ -36,12 +40,12 @@ export function initVideoPlayer(elements, hooks) {
   vid.addEventListener("loadedmetadata", () => {
     videoDur = vid.duration || 0;
     setStatus(DEFAULT_STATUS);
-    checkPicture();
+    checkMediaCompatibility();
     if (onRefreshCb) onRefreshCb();
     updateNow();
   });
 
-  vid.addEventListener("loadeddata", checkPicture);
+  vid.addEventListener("loadeddata", checkMediaCompatibility);
 
   vid.addEventListener("error", () => {
     if (!vid.getAttribute("src")) return;
@@ -255,22 +259,129 @@ export function setStatus(text, isBad = false) {
   if (onStatusChangeCb) onStatusChangeCb(text, isBad);
 }
 
-export function checkPicture() {
-  if (!videoDur || !vid) return;
-  const noPicture = !vid.videoWidth;
-  const fixEl = document.getElementById("vfix");
-  if (fixEl) fixEl.hidden = !noPicture;
-  if (noPicture) {
-    setStatus("Only the sound can play. This browser can't decode the picture of this video.", true);
+export async function inspectFileMedia(file) {
+  const result = {
+    isMkv: false,
+    audioCodec: null,
+    audioName: null,
+    isUnsupportedAudio: false
+  };
+
+  if (!file) return result;
+  const name = file.name || "";
+  const ext = name.split(".").pop().toLowerCase();
+  result.isMkv = ext === "mkv" || file.type === "video/x-matroska";
+
+  if (result.isMkv || ext === "webm" || ext === "mp4" || ext === "mov") {
+    try {
+      const slice = file.slice(0, Math.min(file.size, 512 * 1024));
+      const buffer = await slice.arrayBuffer();
+      const text = new TextDecoder("latin1").decode(new Uint8Array(buffer));
+
+      const match = text.match(/A_(AC3|EAC3|DTS[A-Z0-9_/]*|TRUEHD|AAC|OPUS|VORBIS|PCM[A-Z0-9_/]*|MPEG\/[A-Z0-9]+|FLAC)/i);
+      if (match) {
+        const raw = match[1].toUpperCase();
+        result.audioCodec = raw;
+        if (raw === "AC3") {
+          result.audioName = "Dolby Digital (AC-3)";
+          result.isUnsupportedAudio = true;
+        } else if (raw === "EAC3") {
+          result.audioName = "Dolby Digital Plus (E-AC-3)";
+          result.isUnsupportedAudio = true;
+        } else if (raw.startsWith("DTS")) {
+          result.audioName = "DTS Audio";
+          result.isUnsupportedAudio = true;
+        } else if (raw === "TRUEHD") {
+          result.audioName = "Dolby TrueHD";
+          result.isUnsupportedAudio = true;
+        } else if (raw === "AAC") {
+          result.audioName = "AAC";
+        } else if (raw === "OPUS") {
+          result.audioName = "Opus";
+        } else if (raw === "VORBIS") {
+          result.audioName = "Vorbis";
+        } else if (raw === "FLAC") {
+          result.audioName = "FLAC";
+        } else {
+          result.audioName = raw;
+        }
+      } else if (result.isMkv) {
+        // MKV container with unparsed audio usually contains AC3 / DTS
+        result.isUnsupportedAudio = true;
+        result.audioName = "AC-3 / DTS";
+      }
+    } catch (_) {
+      if (result.isMkv) {
+        result.isUnsupportedAudio = true;
+        result.audioName = "AC-3 / DTS";
+      }
+    }
   }
+
+  return result;
+}
+
+export function checkMediaCompatibility() {
+  if (!vid) return;
+  const fixEl = document.getElementById("vfix");
+  const fixTitle = document.getElementById("vfixTitle");
+  const fixMsg = document.getElementById("vfixMsg");
+  const cmdEl = document.getElementById("vcmd");
+  if (!fixEl || !cmdEl) return;
+
+  if (fixDismissed) {
+    fixEl.hidden = true;
+    return;
+  }
+
+  const noPicture = !vid.videoWidth && videoDur > 0;
+  const fileName = currentLoadedFile?.name || "your-video.mp4";
+  const baseName = fileName.replace(/\.[^/.]+$/, "");
+
+  if (noPicture) {
+    if (fixTitle) fixTitle.textContent = "Video Picture Format Not Supported";
+    if (fixMsg) fixMsg.textContent = "Your browser can't decode this video's picture (often H.265/HEVC or AV1). Timestamps are identical in a smaller copy, so make one just for checking:";
+    cmdEl.textContent = `ffmpeg -i "${fileName}" -vf scale=-2:480 -c:v libx264 -preset veryfast -crf 28 -c:a aac "${baseName}_preview.mp4"`;
+    fixEl.hidden = false;
+    setStatus("Only the sound can play. This browser can't decode the picture of this video.", true);
+    return;
+  }
+
+  if (mediaInspectInfo?.isUnsupportedAudio) {
+    const audioName = mediaInspectInfo.audioName || "AC-3 / DTS";
+    if (fixTitle) fixTitle.textContent = `MKV Audio Not Supported by Browser (${audioName})`;
+    if (fixMsg) fixMsg.textContent = `Video picture is playing normally, but web browsers cannot decode ${audioName} audio natively. To get full audio preview instantly, copy the video and convert only the audio to AAC (~2 seconds):`;
+    cmdEl.textContent = `ffmpeg -i "${fileName}" -c:v copy -c:a aac "${baseName}_preview.mp4"`;
+    fixEl.hidden = false;
+    setStatus(`Video playing. Audio (${audioName}) is unsupported by browser.`, false);
+    return;
+  }
+
+  fixEl.hidden = true;
+}
+
+export const checkPicture = checkMediaCompatibility;
+
+export function dismissMediaFix() {
+  fixDismissed = true;
+  const fixEl = document.getElementById("vfix");
+  if (fixEl) fixEl.hidden = true;
 }
 
 export function loadVideo(file) {
   if (videoURL) URL.revokeObjectURL(videoURL);
   videoURL = URL.createObjectURL(file);
+  currentLoadedFile = file;
+  mediaInspectInfo = null;
+  fixDismissed = false;
   playing = null;
   videoDur = 0;
   vid.src = videoURL;
+
+  inspectFileMedia(file).then(info => {
+    mediaInspectInfo = info;
+    checkMediaCompatibility();
+  });
 
   const vnameEl = document.getElementById("vname");
   if (vnameEl) vnameEl.textContent = file.name;
@@ -303,6 +414,9 @@ export function removeVideo() {
 
   if (videoURL) URL.revokeObjectURL(videoURL);
   videoURL = null;
+  currentLoadedFile = null;
+  mediaInspectInfo = null;
+  fixDismissed = false;
   videoDur = 0;
   if (vid) {
     vid.removeAttribute("src");

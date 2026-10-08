@@ -43,7 +43,8 @@ import {
   isStudioOpen,
   enterStudioMode,
   exitStudioMode,
-  toggleStudioMode
+  toggleStudioMode,
+  dismissMediaFix
 } from "./js/video.js";
 import { showToast } from "./js/toast.js";
 import {
@@ -812,14 +813,29 @@ function setupVideoEvents() {
 
   $("#vClose").onclick = removeVideo;
 
-  $("#vCopyCmd").onclick = async () => {
-    try {
-      await navigator.clipboard.writeText($("#vcmd").textContent);
-      showToast("Command copied");
-    } catch (_) {
-      showToast("Select the command and copy it with Ctrl/Cmd + C");
-    }
-  };
+  const copyBtn = $("#vCopyCmd");
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      try {
+        const cmd = $("#vcmd").textContent;
+        await navigator.clipboard.writeText(cmd);
+        const originalHtml = copyBtn.innerHTML;
+        copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg> <span>Copied!</span>`;
+        showToast("Command copied to clipboard");
+        setTimeout(() => {
+          copyBtn.innerHTML = originalHtml;
+        }, 2200);
+      } catch (_) {
+        showToast("Select the command and copy it with Ctrl/Cmd + C");
+      }
+    };
+  }
+
+  const vDismissFix = $("#vDismissFix");
+  if (vDismissFix) vDismissFix.onclick = dismissMediaFix;
+
+  const vDismissFixX = $("#vDismissFixX");
+  if (vDismissFixX) vDismissFixX.onclick = dismissMediaFix;
 
   const vid = $("#vid");
   $("#rateSel").onchange = e => {

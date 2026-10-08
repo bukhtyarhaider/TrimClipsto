@@ -78,11 +78,6 @@
             <p>Click here or drop your video (.mp4, .mov, .mkv) to preview and set trim marks</p>
           </div>
           <video id="vid" controls preload="metadata" playsinline hidden></video>
-          <div class="vfix" id="vfix" hidden>
-            <p>Your browser can't show this video's picture (often H.265/HEVC or AV1). Timestamps are identical in a smaller copy, so make one just for checking:</p>
-            <pre id="vcmd">ffmpeg -i "your-video.mp4" -vf scale=-2:480 -c:v libx264 -preset veryfast -crf 28 -c:a aac "preview.mp4"</pre>
-            <button class="btn" id="vCopyCmd">Copy command</button>
-          </div>
         </div>
 
         <!-- Studio Mode Custom Transport Controls (shown below video in Studio Mode) -->
@@ -283,6 +278,31 @@
           <span><kbd>Esc</kbd>Exit</span>
         </div>
       </aside>
+
+      <!-- Format Compatibility Notice (Full Width in Regular View, Floating Card in Studio) -->
+      <div class="vfix" id="vfix" hidden>
+        <div class="vfix-header">
+          <div class="vfix-title-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="vfix-icon"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <strong id="vfixTitle">Format Compatibility Notice</strong>
+          </div>
+          <button class="icon sm vfix-close-btn" id="vDismissFixX" title="Dismiss notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <p id="vfixMsg">Your browser can't decode this format directly.</p>
+        <div class="vfix-cmd-box">
+          <pre id="vcmd">ffmpeg -i "your-video.mkv" -c:v copy -c:a aac "preview.mp4"</pre>
+          <button class="btn sm primary vfix-copy-btn" id="vCopyCmd" title="Copy command to clipboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copy command</span>
+          </button>
+        </div>
+        <div class="vfix-actions">
+          <span class="vfix-hint">Tip: <code>-c:v copy</code> finishes in ~2 seconds because it does not re-encode video.</span>
+          <button class="btn sm secondary" id="vDismissFix">Dismiss</button>
+        </div>
+      </div>
 
     </section>
 
