@@ -35,7 +35,6 @@ export function ClipCard({
   const {
     activeId,
     playingClip,
-    currentTime,
     setActiveId,
     updateClip,
     toggleApproval,
@@ -63,8 +62,9 @@ export function ClipCard({
   };
 
   const handlePinTime = (field: "start" | "end") => {
-    updateClip(clip.id, { [field]: fmt(currentTime) });
-    showToast(`Set ${field} time to ${fmt(currentTime)}`);
+    const cur = useClipStore.getState().currentTime;
+    updateClip(clip.id, { [field]: fmt(cur) });
+    showToast(`Set ${field} time to ${fmt(cur)}`);
   };
 
   return (

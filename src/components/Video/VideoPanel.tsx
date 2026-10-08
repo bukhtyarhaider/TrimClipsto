@@ -29,6 +29,7 @@ import {
   Target,
   Film,
   Video,
+  AlertCircle,
   RotateCcw,
   Sun,
   Moon,
@@ -40,6 +41,7 @@ interface VideoPanelProps {
     onLoadedMetadata: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
     onDurationChange?: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
     onCanPlay?: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
+    onSeeked?: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
     onPlay: () => void;
     onPause: () => void;
     onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
@@ -100,12 +102,45 @@ export function VideoPanel({
     return validateClips(clips, videoDuration);
   }, [clips, videoDuration]);
 
+  const validSegments = useMemo(() => {
+    return validationResults
+      .map((r, i) => ({ r, i, clip: clips[i] }))
+      .filter(x => x.r.dur !== null && x.r.s !== null && x.r.e !== null);
+  }, [validationResults, clips]);
+
+  const tlMax = useMemo(() => {
+    const maxEnd = validSegments.reduce((m, x) => Math.max(m, x.r.e || 0), 0);
+    return Math.max(videoDuration || 0, maxEnd, 0);
+  }, [videoDuration, validSegments]);
+
   // Handle active clip resolution
   const curIndex = Math.max(0, clips.findIndex(c => c.id === activeId));
   const curClip = clips.length > 0 ? (clips[curIndex] || clips[0]) : null;
   const curVal = validationResults[curIndex] || { issues: [], dur: null, s: null, e: null };
   const hasErrors = curVal.issues.some(x => x.l === "err");
   const approvedCount = clips.filter(c => c.ok).length;
+  const totalClips = clips.length;
+  const progressPercent = totalClips ? Math.round((approvedCount / totalClips) * 100) : 0;
+  const totalValidDur = validSegments.reduce((sum, x) => sum + (x.r.dur || 0), 0);
+  const totalErrors = validationResults.reduce(
+    (count, r) => count + r.issues.filter(i => i.l === "err").length,
+    0
+  );
+
+  const handleBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!tlMax) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    seekTo(clickRatio * tlMax);
+  };
+
+  const handleSegmentClick = (e: React.MouseEvent, id: number, startSec: number | null) => {
+    e.stopPropagation();
+    setActiveId(id);
+    if (startSec !== null) {
+      seekTo(startSec);
+    }
+  };
 
   // Auto-scroll active item into view in studio mini navigator
   useEffect(() => {
@@ -876,8 +911,182 @@ export function VideoPanel({
   /* ========================================================
      NORMAL INLINE MODE RENDER
      ======================================================== */
+
+  // Case 1: When NO video is loaded - Show ONLY the Timeline & Session Overview
+  if (!videoUrl) {
+    return (
+      <section className="bg-white dark:bg-zinc-900/70 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 p-5 space-y-4 shadow-xs dark:shadow-none transition-colors">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*,.mkv,.mov,.m4v,.webm"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {/* Top Header: Timeline Stats & Load Video Action */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center flex-wrap gap-2">
+            <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+              Timeline Overview
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+              {totalClips} clip{totalClips === 1 ? "" : "s"}
+            </span>
+            <span className="text-zinc-500 dark:text-zinc-400">
+              • {approvedCount} approved ({progressPercent}%)
+            </span>
+            {totalValidDur > 0 && (
+              <span className="text-zinc-400 dark:text-zinc-500 hidden sm:inline">
+                • Trimmed: {human(totalValidDur)}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {totalErrors > 0 && (
+              <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-200 dark:border-rose-500/20 font-medium">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>
+                  {totalErrors} issue{totalErrors === 1 ? "" : "s"}
+                </span>
+              </div>
+            )}
+
+            <Button
+              variant="primary"
+              size="xs"
+              icon={<Upload className="w-3.5 h-3.5" />}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Load Video
+            </Button>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full h-1.5 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300 rounded-full"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        {/* Interactive Timeline Bar */}
+        <div
+          onClick={handleBarClick}
+          className={`relative h-12 w-full bg-zinc-100 dark:bg-zinc-950/80 rounded-xl border border-zinc-200 dark:border-zinc-800/90 overflow-hidden select-none transition-colors ${
+            tlMax ? "cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700/80" : ""
+          }`}
+        >
+          {!tlMax ? (
+            <div className="w-full h-full flex items-center justify-center text-xs text-zinc-500 dark:text-zinc-500">
+              Clips will appear here as you add valid times
+            </div>
+          ) : (
+            <>
+              {/* Clip Segments */}
+              {validSegments.map(({ r, i, clip }) => {
+                const leftPercent = (r.s! / tlMax) * 100;
+                const widthPercent = Math.max(0.6, ((r.e! - r.s!) / tlMax) * 100);
+                const hasErr = r.issues.some(x => x.l === "err");
+                const isActive = clip.id === activeId;
+                const accentColor = getColor(i);
+
+                return (
+                  <button
+                    key={clip.id}
+                    type="button"
+                    onClick={e => handleSegmentClick(e, clip.id, r.s)}
+                    style={{
+                      left: `${leftPercent}%`,
+                      width: `${widthPercent}%`,
+                      backgroundColor: clip.ok ? "rgba(34, 197, 94, 0.5)" : accentColor,
+                      borderColor: isActive ? "#3b82f6" : hasErr ? "#f43f5e" : accentColor,
+                    }}
+                    title={`${i + 1}. ${clip.title || "Untitled"} (${short(r.s!)} – ${short(r.e!)})`}
+                    className={`absolute top-1 bottom-1 rounded-md text-[11px] font-bold flex items-center justify-center transition-all overflow-hidden border ${
+                      isActive ? "ring-2 ring-blue-500 z-20 shadow-lg" : "z-10 hover:brightness-110"
+                    } ${clip.ok ? "text-emerald-950 dark:text-emerald-100" : "text-zinc-950"} ${
+                      hasErr ? "border-rose-500 bg-rose-500/30 text-rose-800 dark:text-rose-200" : ""
+                    }`}
+                  >
+                    <span className="truncate px-1 drop-shadow-xs flex items-center gap-1">
+                      {clip.ok && <Check className="w-2.5 h-2.5 inline shrink-0" />}
+                      {i + 1}
+                    </span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+        </div>
+
+        {/* Axis Ticks */}
+        {tlMax > 0 && (
+          <div className="relative h-4 w-full text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+            {[0, 0.25, 0.5, 0.75, 1].map(p => (
+              <span
+                key={p}
+                className="absolute -translate-x-1/2"
+                style={{ left: `${p * 100}%` }}
+              >
+                {short(tlMax * p)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Compact Video Upload / Drop strip */}
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={e => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onDrop={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const f = e.dataTransfer.files?.[0];
+            if (f) {
+              loadVideoFile(f);
+              showToast(`Loaded video: ${f.name}`);
+            }
+          }}
+          className="group flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 sm:px-5 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-blue-500/60 dark:hover:border-blue-500/60 bg-zinc-50/70 dark:bg-zinc-950/40 hover:bg-blue-50/30 dark:hover:bg-blue-950/10 cursor-pointer transition-all select-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Upload className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                Load video to preview and sync with your clips
+              </p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                Drag & drop a video file here or browse (.mp4, .mov, .mkv, .webm)
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="secondary"
+            size="xs"
+            icon={<Video className="w-3.5 h-3.5 text-blue-500" />}
+            onClick={e => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+          >
+            Browse Video
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
+  // Case 2: When video IS loaded - Show BOTH Video Player and Integrated Timeline
   return (
-    <section className="bg-white dark:bg-zinc-900/60 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 p-5 space-y-4 shadow-xs dark:shadow-none transition-colors">
+    <section className="bg-white dark:bg-zinc-900/70 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 p-4 sm:p-5 space-y-4 shadow-xs dark:shadow-none transition-colors">
       <input
         ref={fileInputRef}
         type="file"
@@ -886,171 +1095,316 @@ export function VideoPanel({
         onChange={handleFileChange}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Column: Video Stage */}
-        <div className="lg:col-span-7 flex flex-col justify-center">
-          <div className="relative w-full aspect-video rounded-xl bg-zinc-950 border border-zinc-300 dark:border-zinc-800/90 overflow-hidden flex items-center justify-center group shadow-inner">
-            {videoUrl ? (
-              <video
-                ref={videoRef}
-                src={videoUrl}
-                playsInline
-                preload="metadata"
-                controls
-                className="w-full h-full object-contain"
-                {...videoHandlers}
-              />
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-zinc-900/40 transition-colors w-full h-full gap-3 select-none"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-zinc-400 flex items-center justify-center group-hover:scale-105 group-hover:text-blue-400 group-hover:border-blue-500/40 transition-all">
-                  <Upload className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-zinc-200">Load a video file</h4>
-                  <p className="text-xs text-zinc-400 mt-1 max-w-xs">
-                    Drop your video here or click to choose (.mp4, .mov, .mkv, .webm)
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Video Info & Quick Controls */}
-        <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
-          <div className="space-y-3">
-            {/* Header / Actions */}
-            <div className="flex items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800/60">
-              <div className="min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
-                  Loaded Video
-                </span>
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate" title={videoFile?.name}>
-                  {videoFile?.name || "No video loaded"}
-                </p>
-              </div>
-
-              {videoUrl && (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    variant="accent"
-                    size="xs"
-                    icon={<Maximize2 className="w-3.5 h-3.5" />}
-                    kbd="M"
-                    onClick={() => setIsStudioOpen(true)}
-                  >
-                    Studio
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    icon={<RefreshCw className="w-3.5 h-3.5" />}
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Change video"
-                  />
-                  <Button
-                    variant="danger"
-                    size="xs"
-                    icon={<Trash2 className="w-3.5 h-3.5" />}
-                    onClick={removeVideo}
-                    title="Remove video"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Timecode & Status */}
-            <div>
-              <div className="flex items-baseline justify-between">
-                <span className="font-mono text-2xl font-bold tracking-tight text-zinc-900 dark:text-white drop-shadow-xs">
-                  {fmt(currentTime)}
-                </span>
-                {videoDuration > 0 && (
-                  <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
-                    / {fmt(videoDuration)}
-                  </span>
-                )}
-              </div>
-
-              <p
-                className={`text-xs mt-1.5 leading-relaxed ${
-                  isStatusBad
-                    ? "text-rose-600 dark:text-rose-400 font-medium"
-                    : "text-zinc-600 dark:text-zinc-400"
-                }`}
-              >
-                {statusText}
-              </p>
-            </div>
-
-            {/* Active clip hint */}
-            <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 text-xs transition-colors">
-              <span className="text-zinc-500 block text-[10px] uppercase font-semibold">
-                Selection Hint
-              </span>
-              <p className="text-zinc-800 dark:text-zinc-300 font-medium truncate mt-0.5">
-                {curClip
-                  ? `Active #${curIndex + 1}: ${curClip.title || "Untitled"}`
-                  : "No clip selected. Click a clip or timeline bar to inspect."}
-              </p>
-            </div>
-          </div>
-
-          {/* Controls: Loop & Speed */}
-          {videoUrl && (
-            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800/60">
-              <div className="flex items-center justify-between gap-4">
-                <label className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isLooping}
-                    onChange={e => setIsLooping(e.target.checked)}
-                    className="w-4 h-4 rounded bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-blue-500 focus:ring-0 cursor-pointer"
-                  />
-                  <Repeat className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-                  <span>Loop clip preview</span>
-                </label>
-
-                <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
-                  <Gauge className="w-3.5 h-3.5" />
-                  <span>Speed:</span>
-                  <select
-                    value={playbackRate}
-                    onChange={e => setPlaybackRate(Number(e.target.value))}
-                    className="bg-zinc-100 dark:bg-zinc-800/90 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700 text-xs rounded-md px-2 py-0.5 focus:outline-none"
-                  >
-                    <option value={0.5}>0.5×</option>
-                    <option value={0.75}>0.75×</option>
-                    <option value={1}>1×</option>
-                    <option value={1.25}>1.25×</option>
-                    <option value={1.5}>1.5×</option>
-                    <option value={2}>2×</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Keyboard shortcuts quick row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-400">
-                <span className="bg-zinc-50 dark:bg-zinc-950/60 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800/80">
-                  <kbd className="text-[10px] bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-zinc-700 dark:text-zinc-300 mr-1">Space</kbd> Play
-                </span>
-                <span className="bg-zinc-50 dark:bg-zinc-950/60 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800/80">
-                  <kbd className="text-[10px] bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-zinc-700 dark:text-zinc-300 mr-1">I</kbd> Set In
-                </span>
-                <span className="bg-zinc-50 dark:bg-zinc-950/60 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800/80">
-                  <kbd className="text-[10px] bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-zinc-700 dark:text-zinc-300 mr-1">O</kbd> Set Out
-                </span>
-                <span className="bg-zinc-50 dark:bg-zinc-950/60 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800/80">
-                  <kbd className="text-[10px] bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-zinc-700 dark:text-zinc-300 mr-1">N</kbd> Next
-                </span>
-              </div>
-            </div>
+      {/* Top Header: Loaded Video & Quick Actions */}
+      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-zinc-200/80 dark:border-zinc-800/60">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate max-w-[200px] sm:max-w-xs" title={videoFile?.name}>
+            {videoFile?.name || "Video Loaded"}
+          </p>
+          {videoDuration > 0 && (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 shrink-0">
+              {fmt(videoDuration)}
+            </span>
           )}
         </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            variant="accent"
+            size="xs"
+            icon={<Maximize2 className="w-3.5 h-3.5" />}
+            kbd="M"
+            onClick={() => setIsStudioOpen(true)}
+            title="Open Fullscreen Studio Mode"
+          >
+            Studio
+          </Button>
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={<RefreshCw className="w-3.5 h-3.5" />}
+            onClick={() => fileInputRef.current?.click()}
+            title="Change video"
+          />
+          <Button
+            variant="danger"
+            size="xs"
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+            onClick={removeVideo}
+            title="Remove video"
+          />
+        </div>
       </div>
+
+      {/* Video Viewport */}
+      <div className="relative w-full aspect-video rounded-xl bg-black border border-zinc-200 dark:border-zinc-800/90 overflow-hidden flex items-center justify-center group shadow-inner">
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          playsInline
+          preload="metadata"
+          className="w-full h-full object-contain cursor-pointer"
+          onClick={togglePlayPause}
+          {...videoHandlers}
+        />
+
+        {/* Floating Badge for Active Clip if currently playing */}
+        {curClip && isCurrentClipPlaying && (
+          <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md text-[11px] font-medium text-white border border-white/10 flex items-center gap-1.5 pointer-events-none shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="truncate max-w-[180px] sm:max-w-[260px]">
+              #{curIndex + 1}: {curClip.title || "Untitled"}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Transport Controls Bar */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        {/* Timecode */}
+        <div className="flex items-baseline gap-1.5 font-mono">
+          <span className="text-base font-bold text-zinc-900 dark:text-white">
+            {fmt(currentTime)}
+          </span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            / {fmt(videoDuration)}
+          </span>
+        </div>
+
+        {/* Center Transport Buttons */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={<SkipBack className="w-3.5 h-3.5" />}
+            onClick={handlePrevClip}
+            title="Previous clip (PageUp)"
+          />
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => nudge(-1)}
+            title="Back 1 second (←)"
+          >
+            -1s
+          </Button>
+          <Button
+            variant={isPlaying ? "secondary" : "primary"}
+            size="sm"
+            icon={isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+            onClick={togglePlayPause}
+            title="Play / Pause (Space)"
+          />
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => nudge(1)}
+            title="Forward 1 second (→)"
+          >
+            +1s
+          </Button>
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={<SkipForward className="w-3.5 h-3.5" />}
+            onClick={handleNextClip}
+            title="Next clip (PageDown)"
+          />
+        </div>
+
+        {/* Right Controls: Loop & Speed */}
+        <div className="flex items-center gap-2">
+          <label className="hidden sm:flex items-center gap-1 text-[11px] text-zinc-600 dark:text-zinc-400 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isLooping}
+              onChange={e => setIsLooping(e.target.checked)}
+              className="w-3.5 h-3.5 rounded bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-blue-500 focus:ring-0 cursor-pointer"
+            />
+            <Repeat className="w-3 h-3 text-zinc-500" />
+            <span>Loop</span>
+          </label>
+
+          <div className="flex items-center gap-1 text-[11px] text-zinc-600 dark:text-zinc-400">
+            <Gauge className="w-3 h-3 text-zinc-500" />
+            <select
+              value={playbackRate}
+              onChange={e => setPlaybackRate(Number(e.target.value))}
+              className="bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 text-[11px] rounded px-1.5 py-0.5 focus:outline-none"
+            >
+              <option value={0.5}>0.5×</option>
+              <option value={0.75}>0.75×</option>
+              <option value={1}>1×</option>
+              <option value={1.25}>1.25×</option>
+              <option value={1.5}>1.5×</option>
+              <option value={2}>2×</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Integrated Timeline Track Section */}
+      <div className="pt-2 border-t border-zinc-200/80 dark:border-zinc-800/60 space-y-2.5">
+        {/* Summary header */}
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs">
+              Timeline
+            </span>
+            <span className="text-zinc-500 dark:text-zinc-400">
+              {approvedCount}/{totalClips} approved ({progressPercent}%)
+            </span>
+            {totalValidDur > 0 && (
+              <span className="text-zinc-400 dark:text-zinc-500 hidden sm:inline">
+                • Trimmed: {human(totalValidDur)}
+              </span>
+            )}
+          </div>
+
+          {totalErrors > 0 && (
+            <span className="text-rose-600 dark:text-rose-400 font-medium text-[11px] flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {totalErrors} error{totalErrors === 1 ? "" : "s"}
+            </span>
+          )}
+        </div>
+
+        {/* Progress line */}
+        <div className="w-full h-1 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300 rounded-full"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        {/* Interactive Track with Real-Time Needle */}
+        <div
+          onClick={handleBarClick}
+          className={`relative h-11 w-full bg-zinc-100 dark:bg-zinc-950/80 rounded-xl border border-zinc-200 dark:border-zinc-800/90 overflow-hidden select-none transition-colors ${
+            tlMax ? "cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700/80" : ""
+          }`}
+        >
+          {!tlMax ? (
+            <div className="w-full h-full flex items-center justify-center text-xs text-zinc-500 dark:text-zinc-600">
+              Clips will appear here as you add valid times
+            </div>
+          ) : (
+            <>
+              {/* Clip Segments */}
+              {validSegments.map(({ r, i, clip }) => {
+                const leftPercent = (r.s! / tlMax) * 100;
+                const widthPercent = Math.max(0.6, ((r.e! - r.s!) / tlMax) * 100);
+                const hasErr = r.issues.some(x => x.l === "err");
+                const isActive = clip.id === activeId;
+                const accentColor = getColor(i);
+
+                return (
+                  <button
+                    key={clip.id}
+                    type="button"
+                    onClick={e => handleSegmentClick(e, clip.id, r.s)}
+                    style={{
+                      left: `${leftPercent}%`,
+                      width: `${widthPercent}%`,
+                      backgroundColor: clip.ok ? "rgba(34, 197, 94, 0.5)" : accentColor,
+                      borderColor: isActive ? "#3b82f6" : hasErr ? "#f43f5e" : accentColor,
+                    }}
+                    title={`${i + 1}. ${clip.title || "Untitled"} (${short(r.s!)} – ${short(r.e!)})`}
+                    className={`absolute top-1 bottom-1 rounded-md text-[10px] font-bold flex items-center justify-center transition-all overflow-hidden border ${
+                      isActive ? "ring-2 ring-blue-500 z-20 shadow-lg" : "z-10 hover:brightness-110"
+                    } ${clip.ok ? "text-emerald-950 dark:text-emerald-100" : "text-zinc-950"} ${
+                      hasErr ? "border-rose-500 bg-rose-500/30 text-rose-800 dark:text-rose-200" : ""
+                    }`}
+                  >
+                    <span className="truncate px-1 drop-shadow-xs flex items-center gap-0.5">
+                      {clip.ok && <Check className="w-2.5 h-2.5 inline shrink-0" />}
+                      {i + 1}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {/* Real-Time Playhead Needle */}
+              {videoDuration > 0 && (
+                <div
+                  className="absolute top-0 bottom-0 w-0.5 bg-rose-500 shadow-md shadow-rose-500/50 pointer-events-none z-30 transition-transform duration-75"
+                  style={{
+                    left: `${Math.min(100, Math.max(0, (currentTime / tlMax) * 100))}%`,
+                  }}
+                >
+                  <div className="w-2.5 h-2.5 bg-rose-500 rotate-45 -translate-x-[4px] -translate-y-1 rounded-[1px]" />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Axis Ticks */}
+        {tlMax > 0 && (
+          <div className="relative h-3.5 w-full text-[9px] text-zinc-500 dark:text-zinc-400 font-mono">
+            {[0, 0.25, 0.5, 0.75, 1].map(p => (
+              <span
+                key={p}
+                className="absolute -translate-x-1/2"
+                style={{ left: `${p * 100}%` }}
+              >
+                {short(tlMax * p)}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Active Clip Hint & Actions */}
+      {curClip && (
+        <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-semibold text-zinc-500 dark:text-zinc-400 block">
+              Active Clip #{curIndex + 1}
+            </span>
+            <p className="font-medium text-zinc-900 dark:text-zinc-200 truncate">
+              {curClip.title || "Untitled"}{" "}
+              <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                ({curClip.start} → {curClip.end})
+              </span>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                updateClip(curClip.id, { start: fmt(currentTime) });
+                showToast(`Set In: ${fmt(currentTime)}`);
+              }}
+              title="Set In point to current time (I)"
+            >
+              Set In [I]
+            </Button>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                updateClip(curClip.id, { end: fmt(currentTime) });
+                showToast(`Set Out: ${fmt(currentTime)}`);
+              }}
+              title="Set Out point to current time (O)"
+            >
+              Set Out [O]
+            </Button>
+            <Button
+              variant={curClip.ok ? "secondary" : "primary"}
+              size="xs"
+              onClick={handleApproveAndNext}
+              title="Approve and proceed to next (N)"
+            >
+              {curClip.ok ? "Approved" : "Approve"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Format compatibility notice banner */}
       <MediaFixNotice />

@@ -5,7 +5,6 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useFileDrop } from "./hooks/useFileDrop";
 
 import { Header } from "./components/Header/Header";
-import { Timeline } from "./components/Timeline/Timeline";
 import { VideoPanel } from "./components/Video/VideoPanel";
 import { SubToolbar } from "./components/Clips/SubToolbar";
 import { ClipList } from "./components/Clips/ClipList";
@@ -17,7 +16,7 @@ import { ConfirmDialog } from "./components/ui/ConfirmDialog";
 import { DropOverlay } from "./components/ui/DropOverlay";
 
 export default function App() {
-  const { loadSavedSession } = useClipStore();
+  const { loadSavedSession, videoUrl } = useClipStore();
 
   useEffect(() => {
     loadSavedSession();
@@ -43,20 +42,51 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-zinc-100/70 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col font-sans antialiased transition-colors duration-200 selection:bg-blue-500/20 selection:text-blue-900 dark:selection:bg-blue-500/30 dark:selection:text-blue-200">
-      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 flex-1">
+      <main
+        className={`w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 flex-1 transition-all ${
+          videoUrl ? "max-w-7xl" : "max-w-5xl"
+        }`}
+      >
         <Header />
-        <Timeline seekTo={seekTo} />
-        <VideoPanel
-          videoRef={videoRef}
-          videoHandlers={videoHandlers}
-          togglePlayPause={togglePlayPause}
-          seekTo={seekTo}
-          nudge={nudge}
-          playClip={playClip}
-        />
-        <SubToolbar />
-        <ClipList playClip={playClip} seekTo={seekTo} />
-        <PreviewPanel />
+
+        {videoUrl ? (
+          /* Split Workstation Layout when video is loaded */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Sticky Unified Video + Timeline Workstation */}
+            <div className="lg:col-span-5 xl:col-span-6 lg:sticky lg:top-4 z-20 space-y-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto pr-0.5">
+              <VideoPanel
+                videoRef={videoRef}
+                videoHandlers={videoHandlers}
+                togglePlayPause={togglePlayPause}
+                seekTo={seekTo}
+                nudge={nudge}
+                playClip={playClip}
+              />
+            </div>
+
+            {/* Right Column: Clips and Review (scrollable long list) */}
+            <div className="lg:col-span-7 xl:col-span-6 space-y-6 min-w-0">
+              <SubToolbar />
+              <ClipList playClip={playClip} seekTo={seekTo} />
+              <PreviewPanel />
+            </div>
+          </div>
+        ) : (
+          /* Clean Single Column Layout when NO video is loaded (Timeline Only) */
+          <div className="space-y-6">
+            <VideoPanel
+              videoRef={videoRef}
+              videoHandlers={videoHandlers}
+              togglePlayPause={togglePlayPause}
+              seekTo={seekTo}
+              nudge={nudge}
+              playClip={playClip}
+            />
+            <SubToolbar />
+            <ClipList playClip={playClip} seekTo={seekTo} />
+            <PreviewPanel />
+          </div>
+        )}
       </main>
 
       {/* Global Dialogs and Overlays */}

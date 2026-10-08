@@ -18,7 +18,6 @@ export function ClipList({ playClip, seekTo }: ClipListProps) {
   const {
     clips,
     videoDuration,
-    currentTime,
     addClip,
   } = useClipStore();
 
@@ -54,7 +53,7 @@ export function ClipList({ playClip, seekTo }: ClipListProps) {
             variant="secondary"
             size="sm"
             icon={<Plus className="w-3.5 h-3.5" />}
-            onClick={() => addClip(currentTime || 0)}
+            onClick={() => addClip(useClipStore.getState().currentTime || 0)}
           >
             Add a clip
           </Button>

@@ -21,7 +21,6 @@ export function EmptyState() {
     addClip,
     openPasteModal,
     importText,
-    currentTime,
   } = useClipStore();
 
   const handleJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,7 +84,7 @@ export function EmptyState() {
             variant="secondary"
             size="md"
             icon={<PlusCircle className="w-4 h-4" />}
-            onClick={() => addClip(currentTime || 0)}
+            onClick={() => addClip(useClipStore.getState().currentTime || 0)}
           >
             Start from scratch
           </Button>
