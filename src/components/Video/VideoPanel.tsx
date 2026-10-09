@@ -33,6 +33,8 @@ import {
   RotateCcw,
   Sun,
   Moon,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
 interface VideoPanelProps {
@@ -219,7 +221,7 @@ export function VideoPanel({
     e: React.KeyboardEvent<HTMLInputElement>,
     field: "start" | "end"
   ) => {
-    if (!curClip) return;
+    if (!curClip || curClip.ok) return;
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
       const delta = (e.shiftKey ? 10 : 1) * (e.key === "ArrowUp" ? 1 : -1);
@@ -551,9 +553,9 @@ export function VideoPanel({
           </div>
 
           {/* Right Column: Studio Inspector & Mini Navigator */}
-          <aside className="w-full lg:w-96 border-l border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/70 p-4 sm:p-5 flex flex-col gap-4 overflow-y-auto shrink-0 shadow-xl transition-colors">
+          <aside className="w-full lg:w-96 border-l border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/90 flex flex-col h-full overflow-hidden shrink-0 shadow-xl transition-colors">
             {/* Inspector Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800/80">
+            <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-zinc-200 dark:border-zinc-800/80 shrink-0">
               <div className="flex items-center gap-2.5">
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Clip Inspector</h3>
                 {curClip && (
@@ -587,12 +589,21 @@ export function VideoPanel({
             </div>
 
             {curClip ? (
-              <div className="space-y-4">
+              <div className="p-4 sm:p-5 pt-3 pb-3 space-y-3.5 shrink-0 max-h-[48vh] overflow-y-auto">
+                {/* Locked Status Banner */}
+                {curClip.ok && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="flex-1">Approved & locked. Unlock to make edits.</span>
+                  </div>
+                )}
+
                 {/* Title Input */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Clip Title</label>
                   <input
                     type="text"
+                    disabled={curClip.ok}
                     value={curClip.title}
                     onChange={e => updateClip(curClip.id, { title: e.target.value })}
                     onKeyDown={e => {
@@ -602,7 +613,7 @@ export function VideoPanel({
                       }
                     }}
                     placeholder="What happens in this clip?"
-                    className="w-full text-xs p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/50 shadow-xs transition-colors"
+                    className="w-full text-xs p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/50 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-zinc-100 dark:disabled:bg-zinc-900/60 transition-colors"
                   />
                 </div>
 
@@ -639,20 +650,23 @@ export function VideoPanel({
                       </div>
                       <input
                         type="text"
+                        disabled={curClip.ok}
                         value={curClip.start}
                         onChange={e => updateClip(curClip.id, { start: e.target.value })}
                         onKeyDown={e => handleTimeKeyDown(e, "start")}
                         placeholder="00:00:00.000"
-                        className="w-full text-xs font-mono p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50"
+                        className="w-full text-xs font-mono p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
                         title="Press ↑ / ↓ to nudge 1s (Shift: 10s)"
                       />
                       <Button
                         variant="accent"
                         size="xs"
+                        disabled={curClip.ok}
                         className="w-full"
                         icon={<Target className="w-3 h-3" />}
                         kbd="I"
                         onClick={() => {
+                          if (curClip.ok) return;
                           updateClip(curClip.id, { start: fmt(currentTime) });
                           showToast(`Set In mark: ${fmt(currentTime)}`);
                         }}
@@ -678,20 +692,23 @@ export function VideoPanel({
                       </div>
                       <input
                         type="text"
+                        disabled={curClip.ok}
                         value={curClip.end}
                         onChange={e => updateClip(curClip.id, { end: e.target.value })}
                         onKeyDown={e => handleTimeKeyDown(e, "end")}
                         placeholder="00:00:00.000"
-                        className="w-full text-xs font-mono p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50"
+                        className="w-full text-xs font-mono p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
                         title="Press ↑ / ↓ to nudge 1s (Shift: 10s)"
                       />
                       <Button
                         variant="accent"
                         size="xs"
+                        disabled={curClip.ok}
                         className="w-full"
                         icon={<Target className="w-3 h-3" />}
                         kbd="O"
                         onClick={() => {
+                          if (curClip.ok) return;
                           updateClip(curClip.id, { end: fmt(currentTime) });
                           showToast(`Set Out mark: ${fmt(currentTime)}`);
                         }}
@@ -708,8 +725,9 @@ export function VideoPanel({
                     <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Output File Name</label>
                     <button
                       type="button"
+                      disabled={curClip.ok}
                       onClick={() => suggestClipName(curClip.id)}
-                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                       <Wand2 className="w-3 h-3" />
                       <span>Suggest Name</span>
@@ -717,10 +735,11 @@ export function VideoPanel({
                   </div>
                   <input
                     type="text"
+                    disabled={curClip.ok}
                     value={curClip.output_name}
                     onChange={e => updateClip(curClip.id, { output_name: e.target.value })}
                     placeholder="clip_01_name.mp4"
-                    className="w-full text-xs font-mono p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/50 shadow-xs transition-colors"
+                    className="w-full text-xs font-mono p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/50 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                   />
                 </div>
 
@@ -747,14 +766,14 @@ export function VideoPanel({
                   <Button
                     variant={curClip.ok ? "secondary" : "primary"}
                     size="md"
-                    className="w-full"
-                    icon={curClip.ok ? <RotateCcw className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                    className={`w-full ${curClip.ok ? "border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10" : ""}`}
+                    icon={curClip.ok ? <Unlock className="w-4 h-4" /> : <Check className="w-4 h-4" />}
                     kbd="Enter"
                     disabled={hasErrors && !curClip.ok}
                     onClick={handleApproveAndNext}
                   >
                     {curClip.ok
-                      ? "Approved (Click to Unlock)"
+                      ? "Unlock to Edit"
                       : hasErrors
                       ? "Fix Errors to Approve"
                       : "Approve & Next"}
@@ -802,9 +821,11 @@ export function VideoPanel({
                     <Button
                       variant="ghost"
                       size="xs"
-                      className="text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                      className="text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
                       icon={<Trash2 className="w-3 h-3" />}
+                      disabled={curClip.ok}
                       onClick={() => removeClip(curClip.id)}
+                      title={curClip.ok ? "Locked (unapprove to delete)" : "Delete clip"}
                     >
                       Delete
                     </Button>
@@ -812,7 +833,7 @@ export function VideoPanel({
                 </div>
               </div>
             ) : (
-              <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+              <div className="p-4 sm:p-5 py-12 flex flex-col items-center justify-center text-center space-y-3 shrink-0">
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">No clips in project yet.</p>
                 <Button
                   variant="primary"
@@ -825,16 +846,16 @@ export function VideoPanel({
               </div>
             )}
 
-            {/* Mini Clips Navigator Section */}
-            <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800/80 flex-1 flex flex-col min-h-[160px]">
-              <div className="flex items-center justify-between pb-2 text-xs">
+            {/* Clips Navigator Section - Fills all available vertical space */}
+            <div className="flex-1 min-h-0 flex flex-col px-4 sm:px-5 pt-3 border-t border-zinc-200 dark:border-zinc-800/80 overflow-hidden">
+              <div className="flex items-center justify-between pb-2 text-xs shrink-0">
                 <span className="font-semibold text-zinc-800 dark:text-zinc-300">
                   All Clips ({clips.length})
                 </span>
                 <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Click to switch & seek</span>
               </div>
 
-              <div className="flex-1 space-y-1.5 overflow-y-auto max-h-56 pr-1">
+              <div className="flex-1 min-h-0 space-y-1.5 overflow-y-auto pr-1">
                 {clips.map((c, i) => {
                   const v = validationResults[i] || {};
                   const len = v.dur !== null ? human(v.dur) : "";
@@ -871,8 +892,11 @@ export function VideoPanel({
                         </p>
                       </div>
                       {c.ok && (
-                        <span className="p-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                          <Check className="w-3.5 h-3.5" />
+                        <span
+                          className="p-1 rounded-md bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0"
+                          title="Approved & locked"
+                        >
+                          <Lock className="w-3 h-3" />
                         </span>
                       )}
                     </div>
@@ -882,7 +906,7 @@ export function VideoPanel({
             </div>
 
             {/* Shortcuts Reference Guide */}
-            <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800/80 grid grid-cols-3 gap-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+            <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/80 grid grid-cols-3 gap-1 text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0 bg-zinc-50/50 dark:bg-zinc-950/30">
               <span className="bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80 p-1 rounded text-center">
                 <kbd className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.5 rounded mr-0.5">Space</kbd> Play
               </span>
@@ -1375,32 +1399,37 @@ export function VideoPanel({
             <Button
               variant="ghost"
               size="xs"
+              disabled={curClip.ok}
               onClick={() => {
+                if (curClip.ok) return;
                 updateClip(curClip.id, { start: fmt(currentTime) });
                 showToast(`Set In: ${fmt(currentTime)}`);
               }}
-              title="Set In point to current time (I)"
+              title={curClip.ok ? "Clip is approved and locked" : "Set In point to current time (I)"}
             >
               Set In [I]
             </Button>
             <Button
               variant="ghost"
               size="xs"
+              disabled={curClip.ok}
               onClick={() => {
+                if (curClip.ok) return;
                 updateClip(curClip.id, { end: fmt(currentTime) });
                 showToast(`Set Out: ${fmt(currentTime)}`);
               }}
-              title="Set Out point to current time (O)"
+              title={curClip.ok ? "Clip is approved and locked" : "Set Out point to current time (O)"}
             >
               Set Out [O]
             </Button>
             <Button
               variant={curClip.ok ? "secondary" : "primary"}
               size="xs"
+              icon={curClip.ok ? <Unlock className="w-3 h-3" /> : undefined}
               onClick={handleApproveAndNext}
-              title="Approve and proceed to next (N)"
+              title={curClip.ok ? "Unlock this clip to make changes" : "Approve and proceed to next (N)"}
             >
-              {curClip.ok ? "Approved" : "Approve"}
+              {curClip.ok ? "Unlock" : "Approve"}
             </Button>
           </div>
         </div>

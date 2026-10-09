@@ -190,6 +190,11 @@ export function useKeyboardShortcuts({
 
         if (k === "i" && activeId) {
           e.preventDefault();
+          const targetClip = clips.find(c => c.id === activeId);
+          if (targetClip?.ok) {
+            showToast("Clip is approved and locked. Unapprove it to edit.");
+            return;
+          }
           updateClip(activeId, { start: fmt(currentTime) });
           showToast(`Set In point: ${fmt(currentTime)}`);
           return;
@@ -197,6 +202,11 @@ export function useKeyboardShortcuts({
 
         if (k === "o" && activeId) {
           e.preventDefault();
+          const targetClip = clips.find(c => c.id === activeId);
+          if (targetClip?.ok) {
+            showToast("Clip is approved and locked. Unapprove it to edit.");
+            return;
+          }
           updateClip(activeId, { end: fmt(currentTime) });
           showToast(`Set Out point: ${fmt(currentTime)}`);
           return;

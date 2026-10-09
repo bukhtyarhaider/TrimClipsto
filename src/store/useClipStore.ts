@@ -201,10 +201,14 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
   },
 
   removeClip: (id: number) => {
-    get().takeSnapshot();
     const { clips, activeId } = get();
     const index = clips.findIndex(c => c.id === id);
     if (index >= 0) {
+      if (clips[index].ok) {
+        get().showToast("Clip is approved and locked. Unapprove it before deleting.");
+        return false;
+      }
+      get().takeSnapshot();
       const updated = clips.filter(c => c.id !== id);
       set({
         clips: updated,
@@ -240,10 +244,15 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
   },
 
   moveClip: (id: number, direction: -1 | 1) => {
-    get().takeSnapshot();
     const { clips } = get();
     const i = clips.findIndex(c => c.id === id);
     if (i < 0) return false;
+    const clip = clips[i];
+    if (clip && clip.ok) {
+      get().showToast("Clip is approved and locked. Unapprove it to make changes.");
+      return false;
+    }
+    get().takeSnapshot();
     let j = i + direction;
     while (j >= 0 && j < clips.length && clips[j].ok) {
       j += direction;
@@ -262,6 +271,11 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
 
   updateClip: (id: number, updates: Partial<Clip>) => {
     const { clips } = get();
+    const clip = clips.find(c => c.id === id);
+    if (clip && clip.ok && updates.ok === undefined) {
+      get().showToast("Clip is approved and locked. Unapprove it to make changes.");
+      return;
+    }
     const updated = clips.map(c => (c.id === id ? { ...c, ...updates } : c));
     set({ clips: updated });
     persistToStorage(updated);
@@ -270,6 +284,10 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
   nudgeClipTime: (id: number, field: "start" | "end", delta: number) => {
     const clip = get().clips.find(c => c.id === id);
     if (!clip) return;
+    if (clip.ok) {
+      get().showToast("Clip is approved and locked. Unapprove it to make changes.");
+      return;
+    }
     const currentVal = toSec(clip[field]);
     const base = currentVal !== null ? currentVal : get().currentTime;
     const newVal = Math.max(0, base + delta);
@@ -335,6 +353,10 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
     const { clips } = get();
     const i = clips.findIndex(c => c.id === id);
     if (i < 0) return;
+    if (clips[i].ok) {
+      get().showToast("Clip is approved and locked. Unapprove it to make changes.");
+      return;
+    }
     const name = suggestName(clips[i].title, i, clips.length);
     get().updateClip(id, { output_name: name });
   },
