@@ -1,371 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Trim Clipsto</title>
-  <link rel="stylesheet" href="./src/css/style.css">
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>
-          <span class="logo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2"/>
-              <path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>
-            </svg>
-          </span>
-          Trim Clipsto
-        </h1>
-        <p>Open your clip file, fix titles, times and file names, then download the updated file. Nothing leaves your computer.</p>
-      </div>
-      <div class="toolbar">
-        <button class="btn" id="openBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>Open file
-        </button>
-        <button class="btn" id="pasteBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></svg>Paste
-        </button>
-        <button class="btn" id="loadVideoBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9.5 5 2.5-5 2.5z"/></svg>Load video
-        </button>
-        <button class="btn accent" id="topStudioBtn" title="Open Fullscreen Studio Trimming View (M)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Studio View
-        </button>
-        <button class="btn primary" id="downloadBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg><span id="dlLabel">Download</span>
-        </button>
-      </div>
-    </header>
-
-    <section class="timeline" aria-label="Timeline of clips">
-      <div class="tl-head"><strong id="sumMain">0 clips</strong><span id="sumSub"></span></div>
-      <div class="prog"><i id="progFill"></i></div>
-      <div class="tl-bar" id="tlBar"></div>
-      <div class="tl-axis" id="tlAxis"></div>
-    </section>
-
-    <!-- Video Preview & Studio Panel -->
-    <section class="vpanel" id="vpanel" hidden aria-label="Video preview and studio">
-      
-      <!-- Studio Mode Top Bar (shown only in Studio Mode) -->
-      <div class="studio-header" id="studioHeader">
-        <div class="studio-title-box">
-          <span class="studio-badge">STUDIO MODE</span>
-          <span class="studio-vname" id="studioVname">No video loaded</span>
-        </div>
-        <div class="studio-stats" id="studioStats">0 clips</div>
-        <div class="studio-top-actions">
-          <button class="btn sm" id="studioFsBtn" title="Toggle Fullscreen (F)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-            Fullscreen
-          </button>
-          <button class="btn sm primary" id="studioExitBtn" title="Exit Studio Mode (Esc)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>
-            Exit Studio <kbd>Esc</kbd>
-          </button>
-        </div>
-      </div>
-
-      <!-- Main Video Media Wrap -->
-      <div class="vmedia-wrap" id="vmediaWrap">
-        <div class="vplayer-stage">
-          <div class="studio-drop-placeholder" id="studioDropZone" title="Click to choose a video or drop one here">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="4"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-            <h3>No video loaded</h3>
-            <p>Click here or drop your video (.mp4, .mov, .mkv) to preview and set trim marks</p>
-          </div>
-          <video id="vid" controls preload="metadata" playsinline hidden></video>
-        </div>
-
-        <!-- Studio Mode Custom Transport Controls (shown below video in Studio Mode) -->
-        <div class="studio-transport" id="studioTransport">
-          <div class="studio-timecode-box">
-            <span class="studio-time-label">PLAYHEAD</span>
-            <span class="studio-time-val" id="studioTimeNow">00:00:00.000</span>
-          </div>
-          
-          <div class="studio-player-controls">
-            <button class="icon sm" id="studioJumpBack" title="Skip back 5 seconds (Shift + ←)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
-            <button class="icon sm" id="studioStepBack" title="Back 1 frame (,)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
-            <button class="icon play-main" id="studioPlayPause" title="Play / Pause (Space)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></button>
-            <button class="icon sm" id="studioStepFwd" title="Forward 1 frame (.)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m6 18 8.5-6L6 6v12zm10-12v12h2V6h-2z"/></svg></button>
-            <button class="icon sm" id="studioJumpFwd" title="Skip forward 5 seconds (Shift + →)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
-          </div>
-
-          <div class="studio-scrub-box">
-            <div class="studio-scrub-bar" id="studioScrubBar" title="Click to seek">
-              <div class="studio-scrub-range" id="studioScrubRange"></div>
-              <i class="studio-scrub-head" id="studioScrubHead"></i>
-            </div>
-          </div>
-
-          <div class="studio-ctrl-options">
-            <label class="vloop" title="Loop current clip playback"><input type="checkbox" id="studioLoopChk"> Loop</label>
-            <select id="studioRateSel" title="Playback speed">
-              <option value="0.5">0.5×</option>
-              <option value="0.75">0.75×</option>
-              <option value="1" selected>1×</option>
-              <option value="1.25">1.25×</option>
-              <option value="1.5">1.5×</option>
-              <option value="2">2×</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Regular Mode Video Info Panel (hidden in Studio Mode) -->
-      <div class="vinfo" id="vinfo">
-        <div class="vhead">
-          <div class="vname" id="vname"></div>
-          <button class="btn sm accent" id="vStudioBtn" title="Maximize video and open Studio Trim Panel (M)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-            Maximize Studio
-          </button>
-          <button class="btn sm" id="vChange">Change</button>
-          <button class="btn sm" id="vClose">Remove</button>
-        </div>
-        <div class="vnow" id="vnow">00:00:00.000</div>
-        <div class="vstatus" id="vstatus"></div>
-        <div class="vactive" id="vactive"></div>
-        
-        <div class="vctrl">
-          <label class="vloop"><input type="checkbox" id="loopChk"> Loop clip</label>
-          <label class="vloop">Speed
-            <select id="rateSel">
-              <option value="0.5">0.5×</option>
-              <option value="0.75">0.75×</option>
-              <option value="1" selected>1×</option>
-              <option value="1.25">1.25×</option>
-              <option value="1.5">1.5×</option>
-              <option value="2">2×</option>
-            </select>
-          </label>
-        </div>
-        <div class="vkeys">
-          <span><kbd>Space</kbd>Play / pause</span>
-          <span><kbd>←</kbd><kbd>→</kbd>Skip 1 s (Shift: 5 s)</span>
-          <span><kbd>,</kbd><kbd>.</kbd>One frame</span>
-          <span><kbd>I</kbd>Set start</span>
-          <span><kbd>O</kbd>Set end</span>
-          <span><kbd>N</kbd>Next to review</span>
-          <span><kbd>M</kbd>Studio Mode</span>
-        </div>
-      </div>
-
-      <!-- Studio Mode Right Side Quick Trimming Panel (shown only in Studio Mode) -->
-      <aside class="studio-sidebar" id="studioSidebar">
-        
-        <div class="studio-side-head">
-          <div class="studio-side-title">
-            <h3>Clip Inspector</h3>
-            <span class="studio-clip-badge" id="studioActiveBadge">#1</span>
-          </div>
-          <div class="studio-nav-arrows">
-            <button class="icon sm" id="studioPrevClipBtn" title="Previous Clip (PageUp)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
-            <button class="icon sm" id="studioNextClipBtn" title="Next Clip (PageDown)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Active Clip Editor Box -->
-        <div class="studio-clip-editor" id="studioClipEditor">
-          
-          <div class="studio-field">
-            <label class="studio-label" for="studioTitleInp">Clip Title</label>
-            <input type="text" id="studioTitleInp" placeholder="What happens in this clip?" autocomplete="off">
-          </div>
-
-          <!-- Quick Trim Marks Box -->
-          <div class="studio-trim-box">
-            <div class="studio-trim-head">
-              <span class="studio-trim-title">Trim Marks</span>
-              <span class="studio-dur-pill" id="studioDurPill">0 s</span>
-            </div>
-
-            <div class="studio-trim-grid">
-              <!-- IN MARK -->
-              <div class="studio-mark-card">
-                <div class="studio-mark-header">
-                  <span class="studio-mark-tag in">IN POINT</span>
-                  <button class="studio-seek-btn" id="studioSeekInBtn" title="Seek video to In Point">Seek</button>
-                </div>
-                <div class="studio-mark-input-wrap">
-                  <input type="text" class="time" id="studioInVal" placeholder="00:00:00.000">
-                </div>
-                <button class="btn sm accent studio-set-btn" id="studioSetInBtn" title="Mark In Point at current video time (I)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-                  Set In <kbd>I</kbd>
-                </button>
-              </div>
-
-              <!-- OUT MARK -->
-              <div class="studio-mark-card">
-                <div class="studio-mark-header">
-                  <span class="studio-mark-tag out">OUT POINT</span>
-                  <button class="studio-seek-btn" id="studioSeekOutBtn" title="Seek video to Out Point">Seek</button>
-                </div>
-                <div class="studio-mark-input-wrap">
-                  <input type="text" class="time" id="studioOutVal" placeholder="00:00:00.000">
-                </div>
-                <button class="btn sm accent studio-set-btn" id="studioSetOutBtn" title="Mark Out Point at current video time (O)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-                  Set Out <kbd>O</kbd>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Filename Field -->
-          <div class="studio-field">
-            <div class="studio-field-row">
-              <label class="studio-label" for="studioNameInp">Output File Name</label>
-              <button class="studio-suggest-link" id="studioSuggestBtn" title="Suggest filename from title">Suggest Name</button>
-            </div>
-            <div class="filewrap">
-              <input type="text" id="studioNameInp" placeholder="clip_01_name.mp4" autocomplete="off" spellcheck="false">
-            </div>
-          </div>
-
-          <!-- Quick Action Buttons -->
-          <div class="studio-primary-actions">
-            <button class="btn primary studio-approve-btn" id="studioApproveBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
-              <span id="studioApproveTxt">Approve & Next</span> <kbd>Enter</kbd>
-            </button>
-            
-            <div class="studio-action-row">
-              <button class="btn" id="studioPreviewClipBtn" title="Preview active clip (P)">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
-                Preview Clip
-              </button>
-              <button class="btn accent" id="studioAddHereBtn" title="Create a new clip starting at current playhead (+)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                + New Clip
-              </button>
-            </div>
-
-            <div class="studio-action-row sub">
-              <button class="btn sm" id="studioDupBtn" title="Duplicate this clip">Duplicate</button>
-              <button class="btn sm danger-text" id="studioDelBtn" title="Delete this clip">Delete</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mini Clips Navigator Section -->
-        <div class="studio-nav-section">
-          <div class="studio-nav-head">
-            <span class="studio-nav-title">All Clips (<span id="studioNavCount">0</span>)</span>
-            <span class="studio-nav-hint">Click to switch & seek</span>
-          </div>
-          <div class="studio-nav-list" id="studioNavList">
-            <!-- Dynamic mini clip rows injected here -->
-          </div>
-        </div>
-
-        <!-- Shortcuts Quick Reference -->
-        <div class="studio-shortcuts-hint">
-          <span><kbd>Space</kbd>Play</span>
-          <span><kbd>I</kbd>Set In</span>
-          <span><kbd>O</kbd>Set Out</span>
-          <span><kbd>,</kbd><kbd>.</kbd>Frame</span>
-          <span><kbd>N</kbd>Next</span>
-          <span><kbd>Esc</kbd>Exit</span>
-        </div>
-      </aside>
-
-      <!-- Format Compatibility Notice (Full Width in Regular View, Floating Card in Studio) -->
-      <div class="vfix" id="vfix" hidden>
-        <div class="vfix-header">
-          <div class="vfix-title-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="vfix-icon"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <strong id="vfixTitle">Format Compatibility Notice</strong>
-          </div>
-          <button class="icon sm vfix-close-btn" id="vDismissFixX" title="Dismiss notice">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <p id="vfixMsg">Your browser can't decode this format directly.</p>
-        <div class="vfix-cmd-box">
-          <pre id="vcmd">ffmpeg -i "your-video.mkv" -c:v copy -c:a aac "preview.mp4"</pre>
-          <button class="btn sm primary vfix-copy-btn" id="vCopyCmd" title="Copy command to clipboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <span>Copy command</span>
-          </button>
-        </div>
-        <div class="vfix-actions">
-          <span class="vfix-hint">Tip: <code>-c:v copy</code> finishes in ~2 seconds because it does not re-encode video.</span>
-          <button class="btn sm secondary" id="vDismissFix">Dismiss</button>
-        </div>
-      </div>
-
-    </section>
-
-    <div class="toolbar subtools" style="margin-bottom:14px">
-      <button class="btn accent" id="nextBtn">Next to review</button>
-      <button class="btn" id="sortBtn">Sort by start time</button>
-      <button class="btn" id="renameAllBtn">Suggest all file names</button>
-      <button class="btn" id="resetApprBtn">Reset approvals</button>
-      <button class="btn" id="startOverBtn" style="margin-left:auto">Start over</button>
-    </div>
-
-    <div id="list">
-      <div id="emptyBox"></div>
-      <section class="group" id="revSec" hidden>
-        <h2 class="ghead">To review <span class="count" id="revCount">0</span></h2>
-        <div class="list" id="revList"></div>
-        <p class="allgood" id="allGood" hidden>Every clip is approved. Download your file when you're ready.</p>
-        <button class="btn add" id="addBtn">+ Add a clip</button>
-      </section>
-      <details class="donesec group" id="doneSec" open hidden>
-        <summary class="ghead">Approved and locked <span class="count" id="doneCount">0</span></summary>
-        <div class="list" id="doneList"></div>
-      </details>
-    </div>
-
-    <details id="pvDetails">
-      <summary>Preview the file you'll download</summary>
-      <div class="pv">
-        <div class="pv-bar"><span>This is exactly what gets saved.</span><button class="btn" id="copyBtn">Copy</button></div>
-        <pre id="preview"></pre>
-      </div>
-    </details>
-  </div>
-
-  <input type="file" id="fileInput" accept=".json,application/json" hidden>
-  <input type="file" id="videoInput" accept="video/*,.mkv,.mov,.m4v" hidden>
-
-  <dialog id="pasteDlg">
-    <h2>Paste your clip list</h2>
-    <p>Paste the text from your JSON file. It replaces what you have now (you can undo).</p>
-    <textarea id="pasteArea" spellcheck="false" placeholder='[ { "title": "...", "start": "00:00:00.000", "end": "00:00:10.000", "output_name": "clip_01.mp4" } ]'></textarea>
-    <div class="dlg-err" id="pasteErr"></div>
-    <div class="dlg-act">
-      <button class="btn" id="pasteCancel">Cancel</button>
-      <button class="btn primary" id="pasteLoad">Load clips</button>
-    </div>
-  </dialog>
-
-  <dialog id="confirmDlg">
-    <h2 id="confirmTitle">Start over?</h2>
-    <p id="confirmMsg">Clear everything and go back to the empty screen? You can undo this right after.</p>
-    <div class="dlg-act">
-      <button class="btn" id="confirmCancel">Cancel</button>
-      <button class="btn primary" id="confirmOk">Clear everything</button>
-    </div>
-  </dialog>
-
-  <div class="toast" id="toast" role="status" aria-live="polite">
-    <span id="toastMsg"></span>
-    <button id="toastUndo" hidden>Undo</button>
-  </div>
-  <div class="drop" id="drop">Drop your clip file (.json) or your video</div>
-
-  <script type="module" src="./src/main.js"></script>
-</body>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trim Clipsto — Pro Video Clip Trimmer</title>
+    <meta name="author" content="Bukhtyar Haider" />
+    <meta
+      name="description"
+      content="Open your clip file, fine-tune titles, timestamps and file names, then download the updated file. All processing happens entirely offline in your browser."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="alternate icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#090d16" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <script>
+      try {
+        const saved = localStorage.getItem('clipsto-theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else if (saved === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (_) {}
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-zinc-100/70 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

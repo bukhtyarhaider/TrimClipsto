@@ -1,6 +1,7 @@
 {
   "name": "trim-clipsto",
   "version": "1.0.0",
+  "author": "Bukhtyar Haider",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +10,20 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^5.4.14",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.4",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^6.4.4",
     "vite-plugin-singlefile": "^2.1.0"
+  },
+  "dependencies": {
+    "lucide-react": "^1.53.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.15"
   }
 }
