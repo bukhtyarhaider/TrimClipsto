@@ -2,8 +2,8 @@ import { useRef } from "react";
 import { useClipStore, toExportJSON } from "../../store/useClipStore";
 import { useThemeStore } from "../../store/useThemeStore";
 import { Button } from "../ui/Button";
+import { Logo } from "../ui/Logo";
 import {
-  Film,
   FolderOpen,
   Clipboard,
   Video,
@@ -83,24 +83,10 @@ export function Header() {
 
   return (
     <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-zinc-200 dark:border-zinc-800/80 transition-colors">
-      <div className="flex items-start gap-3.5">
-        <div className="p-2.5 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20 border border-blue-400/30">
-          <Film className="w-6 h-6" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-              Trim Clipsto
-            </h1>
-            <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
-              Trim it all
-            </span>
-          </div>
-          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 max-w-xl leading-relaxed">
-            Open your clip file, fine-tune titles, timestamps and file names, then download the updated file. All processing happens entirely offline in your browser.
-          </p>
-        </div>
-      </div>
+      <Logo
+        size="lg"
+        subtitle="Open your clip file, fine-tune titles, timestamps and file names, then download the updated file. All processing happens entirely offline in your browser."
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <input
