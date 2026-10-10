@@ -672,42 +672,6 @@ export function SettingsModal() {
                   </a>
                 </div>
               </div>
-
-              {/* Architecture & Tech Stack Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-xs">
-                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
-                  <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] uppercase font-mono">
-                    Frontend
-                  </span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                    React 18 + TS
-                  </span>
-                </div>
-                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
-                  <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] uppercase font-mono">
-                    Styling
-                  </span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                    Tailwind v4
-                  </span>
-                </div>
-                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
-                  <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] uppercase font-mono">
-                    State
-                  </span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                    Zustand
-                  </span>
-                </div>
-                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
-                  <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] uppercase font-mono">
-                    Privacy
-                  </span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    100% Offline
-                  </span>
-                </div>
-              </div>
             </div>
           )}
         </div>
