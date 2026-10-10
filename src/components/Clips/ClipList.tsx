@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useClipStore } from "../../store/useClipStore";
+import { useSettingsStore } from "../../store/useSettingsStore";
 import { validateClips } from "../../utils/validation";
 import { ClipCard } from "./ClipCard";
 import { ApprovedCard } from "./ApprovedCard";
@@ -21,9 +22,11 @@ export function ClipList({ playClip, seekTo }: ClipListProps) {
     addClip,
   } = useClipStore();
 
+  const fileExtension = useSettingsStore(state => state.settings.fileExtension);
+
   const validationResults = useMemo(() => {
-    return validateClips(clips, videoDuration);
-  }, [clips, videoDuration]);
+    return validateClips(clips, videoDuration, fileExtension);
+  }, [clips, videoDuration, fileExtension]);
 
   if (!clips.length) {
     return <EmptyState />;
@@ -112,6 +115,7 @@ export function ClipList({ playClip, seekTo }: ClipListProps) {
                   clip={c}
                   index={i}
                   playClip={playClip}
+                  seekTo={seekTo}
                 />
               ))
             ) : (

@@ -14,6 +14,7 @@ import { Toast } from "./components/ui/Toast";
 import { PasteDialog } from "./components/ui/PasteDialog";
 import { ConfirmDialog } from "./components/ui/ConfirmDialog";
 import { DropOverlay } from "./components/ui/DropOverlay";
+import { SettingsModal } from "./components/Settings/SettingsModal";
 
 export default function App() {
   const { loadSavedSession, videoUrl } = useClipStore();
@@ -89,8 +90,30 @@ export default function App() {
         )}
       </main>
 
+      {/* Minimalist Studio Footer */}
+      <footer className="w-full border-t border-zinc-200/80 dark:border-zinc-800/80 py-4 px-4 sm:px-6 mt-auto transition-colors">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-zinc-700 dark:text-zinc-300">Trim Clipsto</span>
+            <span>•</span>
+            <span>
+              Developed by{" "}
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                Bukhtyar Haider
+              </span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-zinc-400 dark:text-zinc-500">
+      
+            <span>•</span>
+            <span>v1.0.0</span>
+          </div>
+        </div>
+      </footer>
+
       {/* Global Dialogs and Overlays */}
       <PasteDialog />
+      <SettingsModal />
       <ConfirmDialog />
       <Toast />
       <DropOverlay isDragging={isDragging} />

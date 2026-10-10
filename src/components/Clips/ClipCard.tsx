@@ -1,8 +1,9 @@
 import React, { useRef } from "react";
 import { Clip, ClipValidation } from "../../types";
 import { useClipStore } from "../../store/useClipStore";
+import { useSettingsStore } from "../../store/useSettingsStore";
 import { getColor } from "../../utils/constants";
-import { human, fmt } from "../../utils/time";
+import { human, fmt, toSec } from "../../utils/time";
 import { Button } from "../ui/Button";
 import {
   Check,
@@ -31,6 +32,7 @@ export function ClipCard({
   index,
   validation,
   playClip,
+  seekTo,
 }: ClipCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -74,8 +76,14 @@ export function ClipCard({
   return (
     <article
       ref={cardRef}
-      onClick={() => setActiveId(clip.id)}
-      className={`group relative rounded-2xl border transition-all duration-200 overflow-hidden ${
+      onClick={() => {
+        setActiveId(clip.id);
+        if (seekTo && useSettingsStore.getState().settings.autoSeekOnSelect) {
+          const startSec = toSec(clip.start);
+          if (startSec !== null) seekTo(startSec);
+        }
+      }}
+      className={`group relative rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer ${
         isActive
           ? "bg-white dark:bg-zinc-900/95 border-blue-500 dark:border-blue-500/80 shadow-md dark:shadow-lg dark:shadow-blue-500/10 ring-2 ring-blue-500/30"
           : "bg-white dark:bg-zinc-900/50 border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700/80 shadow-xs dark:shadow-none"

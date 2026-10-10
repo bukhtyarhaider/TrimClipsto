@@ -1,7 +1,7 @@
 {
   "name": "Trim Clipsto",
   "short_name": "Clipsto",
-  "description": "Pro Video Clip Trimmer & JSON Editor",
+  "description": "Pro Video Clip Trimmer",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#090d16",

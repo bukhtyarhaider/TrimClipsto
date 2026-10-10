@@ -31,9 +31,13 @@ All processing occurs **100% locally in your browser**—no server uploads, no p
 - **Full Offline Persistence & Undo**
   - LocalStorage session auto-saving with session restore banner.
   - Single-action snapshot Undo (`Ctrl+Z` / Toast Undo button) across removals, bulk edits, and approval resets.
-- **Clean JSON Import & Export**
-  - Direct `.json` file upload or paste via modal.
-  - One-click copy, download as formatted JSON, and smart filename generator (`suggestName`).
+- **Project Name & Dynamic Naming Conventions**
+  - **Project Name Identifier**: Quick-edit project name badge in the header that directly drives generated clip file names and export JSON naming (`{projectName}.json`).
+  - **Configurable Filename Templates**: Preset and custom token patterns (`{project}_{index0}_{slug}.{ext}`, `{project}_{slug}_{index0}.{ext}`, `clip_{index0}_{slug}.{ext}`, etc.) with real-time live preview.
+  - **Multi-Container Support**: Choose `.mp4`, `.mkv`, `.mov`, or `.webm` with automatic validation and kebab/snake-case word separators.
+- **Workspace Settings Modal**
+  - Tabbed preferences modal (Project & Naming, Video & Playback, JSON & Export, Workflow, Storage & Reset).
+  - Customizable timeline FPS (`23.976`, `24`, `25`, `29.97`, `30`, `60`), default clip durations, nudge deltas, loop playback, export timecode formats, and strict approval guard toggles.
 - **Dark & Light Themes**
   - Seamless toggle with persistent theme tokens built on Tailwind CSS v4.
 
@@ -181,6 +185,13 @@ TrimClipsto/
 ## Privacy & Security
 
 Trim Clipsto operates strictly on the client side. Your video files and JSON data never leave your computer, making it completely safe for proprietary, unreleased, or sensitive footage.
+
+---
+
+## Author & Developer
+
+**Bukhtyar Haider**
+- GitHub: [@bukhtyarhaider](https://github.com/bukhtyarhaider)
 
 ---
 

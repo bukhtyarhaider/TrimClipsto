@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useEffect, useMemo } from "react";
 import { useClipStore } from "../store/useClipStore";
+import { useSettingsStore } from "../store/useSettingsStore";
 import { toSec } from "../utils/time";
 
 export function useVideoController() {
@@ -38,7 +39,9 @@ export function useVideoController() {
     }
 
     const activePlaying = useClipStore.getState().playingClip;
-    const looping = useClipStore.getState().isLooping;
+    const looping =
+      useClipStore.getState().isLooping ||
+      useSettingsStore.getState().settings.loopClipPlayback;
 
     if (activePlaying) {
       // If we were seeking to the start of the clip, check if playhead has reached start

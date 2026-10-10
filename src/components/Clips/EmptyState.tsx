@@ -4,12 +4,9 @@ import { Button } from "../ui/Button";
 import {
   FolderOpen,
   Clipboard,
-  PlusCircle,
+  Plus,
   RotateCcw,
-  Video,
-  FileCheck2,
-  SlidersHorizontal,
-  DownloadCloud,
+  FileCode2,
 } from "lucide-react";
 
 export function EmptyState() {
@@ -37,10 +34,11 @@ export function EmptyState() {
   };
 
   const savedCount = savedSession?.length || 0;
-  const approvedSavedCount = savedSession?.filter((c: any) => c && c._ok === true).length || 0;
+  const approvedSavedCount =
+    savedSession?.filter((c: any) => c && c._ok === true).length || 0;
 
   return (
-    <div className="relative rounded-3xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 p-8 sm:p-12 text-center overflow-hidden shadow-xs dark:shadow-none transition-colors space-y-8">
+    <div className="relative rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800/80 hover:border-blue-500/40 dark:hover:border-blue-500/40 bg-white/60 dark:bg-zinc-900/30 p-6 sm:p-8 text-center transition-all duration-200 flex flex-col items-center justify-center shadow-xs">
       <input
         ref={fileInputRef}
         type="file"
@@ -49,105 +47,70 @@ export function EmptyState() {
         onChange={handleJsonUpload}
       />
 
-      {/* Decorative gradient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/5 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative z-10 max-w-xl mx-auto space-y-3">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-          Open your clip file to begin
-        </h2>
-        <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Drop a <code className="text-blue-600 dark:text-blue-400 font-mono font-medium">.json</code> file anywhere on this page, or choose one from your computer to inspect, retime, and refine your video clips.
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
-          <Button
-            variant="primary"
-            size="md"
-            icon={<FolderOpen className="w-4 h-4" />}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Open file
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="md"
-            icon={<Clipboard className="w-4 h-4" />}
-            onClick={openPasteModal}
-          >
-            Paste JSON
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="md"
-            icon={<PlusCircle className="w-4 h-4" />}
-            onClick={() => addClip(useClipStore.getState().currentTime || 0)}
-          >
-            Start from scratch
-          </Button>
-
-          {savedSession && savedCount > 0 && (
-            <Button
-              variant="accent"
-              size="md"
-              icon={<RotateCcw className="w-4 h-4" />}
-              onClick={resumeSavedSession}
-            >
-              Resume session ({savedCount} clips, {approvedSavedCount} approved)
-            </Button>
-          )}
-        </div>
+      {/* Modern Compact Brand Icon */}
+      <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200/60 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 shadow-xs">
+        <FileCode2 className="w-5 h-5" />
       </div>
 
-      {/* Step by Step Workflow Guide */}
-      <div className="relative z-10 max-w-3xl mx-auto pt-6 border-t border-zinc-200 dark:border-zinc-800/80">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-4">
-          Recommended Workflow
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-left">
-          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800/80 space-y-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Video className="w-4 h-4" />
-            </div>
-            <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">1. Load video</h5>
-            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal">
-              Drop your source video for instant scrubbing & timeline previews.
-            </p>
-          </div>
+      {/* Typography */}
+      <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
+        No clips in review queue
+      </h3>
+      <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-sm mb-5 leading-relaxed">
+        Drop a <code className="text-blue-600 dark:text-blue-400 font-mono font-medium">.json</code> file here, open an existing list, or start from scratch.
+      </p>
 
-          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800/80 space-y-2">
-            <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <FileCheck2 className="w-4 h-4" />
-            </div>
-            <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">2. Open clip file</h5>
-            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal">
-              Import existing timestamp lists or create new clips directly.
-            </p>
-          </div>
+      {/* Action Buttons */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button
+          variant="primary"
+          size="sm"
+          icon={<FolderOpen className="w-3.5 h-3.5" />}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Open JSON
+        </Button>
 
-          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800/80 space-y-2">
-            <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-              <SlidersHorizontal className="w-4 h-4" />
-            </div>
-            <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">3. Retime & review</h5>
-            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal">
-              Set In/Out marks, preview cuts, fix filenames, and approve clips.
-            </p>
-          </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Clipboard className="w-3.5 h-3.5" />}
+          onClick={openPasteModal}
+        >
+          Paste JSON
+        </Button>
 
-          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800/80 space-y-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <DownloadCloud className="w-4 h-4" />
-            </div>
-            <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">4. Download</h5>
-            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal">
-              Export clean, validated JSON ready for your rendering pipelines.
-            </p>
-          </div>
-        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Plus className="w-3.5 h-3.5" />}
+          onClick={() => addClip(useClipStore.getState().currentTime || 0)}
+        >
+          New Clip
+        </Button>
+      </div>
+
+      {/* Resume Session Button if cached session exists */}
+      {savedSession && savedCount > 0 && (
+        <button
+          onClick={resumeSavedSession}
+          className="mt-4 px-3 py-1.5 rounded-xl text-xs font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>
+            Restore previous session ({savedCount} clip{savedCount === 1 ? "" : "s"}
+            {approvedSavedCount > 0 ? `, ${approvedSavedCount} approved` : ""})
+          </span>
+        </button>
+      )}
+
+      {/* Pro-Tip Footer */}
+      <div className="mt-5 pt-3.5 border-t border-zinc-200/60 dark:border-zinc-800/60 flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+        <span>Tip: Press</span>
+        <kbd className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 font-mono text-[10px] text-zinc-600 dark:text-zinc-300">
+          +
+        </kbd>
+        <span>to add a clip at the playhead</span>
       </div>
     </div>
   );

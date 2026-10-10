@@ -7,7 +7,7 @@ export function Toast() {
   if (!toast || !toast.show) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-zinc-900/95 text-zinc-100 text-sm font-medium shadow-2xl shadow-black/80 border border-zinc-700/80 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-200">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-3 px-4 py-2.5 rounded-xl bg-zinc-900/95 text-zinc-100 text-sm font-medium shadow-2xl shadow-black/80 border border-zinc-700/80 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-200">
       <span className="max-w-md truncate">{toast.message}</span>
       {toast.withUndo && (
         <button

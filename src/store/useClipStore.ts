@@ -1,9 +1,10 @@
 import { create } from "zustand";
-import { Clip, MediaInspectInfo, PlayingClipState } from "../types";
+import { Clip, MediaInspectInfo, PlayingClipState, TimeFormatOption } from "../types";
 import { STORE_KEY, DEFAULT_STATUS } from "../utils/constants";
-import { toSec, fmt } from "../utils/time";
+import { toSec, fmt, fmtShort } from "../utils/time";
 import { suggestName } from "../utils/validation";
 import { inspectFileMedia } from "../utils/mediaInspect";
+import { useSettingsStore } from "./useSettingsStore";
 
 let uidCounter = 0;
 
@@ -34,14 +35,39 @@ export function fromJSON(arr: any[]): Clip[] {
   });
 }
 
-export function toExportJSON(clips: Clip[]): any[] {
+export function toExportJSON(clips: Clip[], formatOverride?: TimeFormatOption): any[] {
+  const format =
+    formatOverride || useSettingsStore.getState().settings.timestampFormat || "timecode";
   return clips.map(c => {
     const s = toSec(c.start);
     const e = toSec(c.end);
+    let startVal: any = (c.start || "").trim();
+    let endVal: any = (c.end || "").trim();
+
+    if (s !== null) {
+      if (format === "seconds") {
+        startVal = Number(s.toFixed(3));
+      } else if (format === "short") {
+        startVal = fmtShort(s);
+      } else {
+        startVal = fmt(s);
+      }
+    }
+
+    if (e !== null) {
+      if (format === "seconds") {
+        endVal = Number(e.toFixed(3));
+      } else if (format === "short") {
+        endVal = fmtShort(e);
+      } else {
+        endVal = fmt(e);
+      }
+    }
+
     return {
       title: (c.title || "").trim(),
-      start: s === null ? (c.start || "").trim() : fmt(s),
-      end: e === null ? (c.end || "").trim() : fmt(e),
+      start: startVal,
+      end: endVal,
       output_name: (c.output_name || "").trim(),
       ...(c.extra || {}),
     };
@@ -49,7 +75,7 @@ export function toExportJSON(clips: Clip[]): any[] {
 }
 
 function toSavedJSON(clips: Clip[]): any[] {
-  const exported = toExportJSON(clips);
+  const exported = toExportJSON(clips, "timecode");
   return exported.map((o, i) => ({ ...o, _ok: clips[i].ok }));
 }
 
@@ -190,9 +216,10 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
       start = currentTime || 0;
     }
 
+    const defaultDur = useSettingsStore.getState().settings.defaultClipDuration || 30;
     const newClip = makeClip({
       start: fmt(start),
-      end: fmt(start + 30),
+      end: fmt(start + defaultDur),
     });
     const updated = [...clips, newClip];
     set({ clips: updated, activeId: newClip.id });
@@ -309,12 +336,15 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
     } else {
       // Approve
       get().takeSnapshot();
+      const autoAdvance = useSettingsStore.getState().settings.autoAdvanceOnApprove;
       let nextId: number | null = null;
-      for (let k = 1; k < clips.length; k++) {
-        const nextCandidate = clips[(i + k) % clips.length];
-        if (!nextCandidate.ok) {
-          nextId = nextCandidate.id;
-          break;
+      if (autoAdvance) {
+        for (let k = 1; k < clips.length; k++) {
+          const nextCandidate = clips[(i + k) % clips.length];
+          if (!nextCandidate.ok) {
+            nextId = nextCandidate.id;
+            break;
+          }
         }
       }
       const updated = clips.map(c => (c.id === id ? { ...c, ok: true } : c));
@@ -357,7 +387,14 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
       get().showToast("Clip is approved and locked. Unapprove it to make changes.");
       return;
     }
-    const name = suggestName(clips[i].title, i, clips.length);
+    const settings = useSettingsStore.getState().settings;
+    const name = suggestName(clips[i].title, i, clips.length, {
+      projectName: settings.projectName,
+      pattern: settings.namingPattern,
+      extension: settings.fileExtension,
+      separator: settings.slugSeparator,
+      maxWords: settings.maxSlugWords,
+    });
     get().updateClip(id, { output_name: name });
   },
 
@@ -366,9 +403,19 @@ export const useClipStore = create<ClipStoreState>((set, get) => ({
     const openCount = clips.filter(c => !c.ok).length;
     if (!openCount) return 0;
     get().takeSnapshot();
+    const settings = useSettingsStore.getState().settings;
     const updated = clips.map((c, i) => {
       if (!c.ok) {
-        return { ...c, output_name: suggestName(c.title, i, clips.length) };
+        return {
+          ...c,
+          output_name: suggestName(c.title, i, clips.length, {
+            projectName: settings.projectName,
+            pattern: settings.namingPattern,
+            extension: settings.fileExtension,
+            separator: settings.slugSeparator,
+            maxWords: settings.maxSlugWords,
+          }),
+        };
       }
       return c;
     });

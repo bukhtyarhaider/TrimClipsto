@@ -73,3 +73,19 @@ export function short(sec: number): string {
   const s = sec % 60;
   return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
+
+/**
+ * Formats seconds into MM:SS.mmm format (or HH:MM:SS.mmm if >= 1 hour).
+ */
+export function fmtShort(sec: number): string {
+  if (isNaN(sec) || sec < 0) sec = 0;
+  const ms = Math.round(sec * 1000);
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const msPart = pad(ms % 1000, 3);
+  if (h > 0) {
+    return `${pad(h)}:${pad(m)}:${pad(s)}.${msPart}`;
+  }
+  return `${pad(m)}:${pad(s)}.${msPart}`;
+}

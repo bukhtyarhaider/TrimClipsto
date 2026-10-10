@@ -1,6 +1,7 @@
 import React from "react";
 import { Clip } from "../../types";
 import { useClipStore } from "../../store/useClipStore";
+import { useSettingsStore } from "../../store/useSettingsStore";
 import { getColor } from "../../utils/constants";
 import { toSec, human } from "../../utils/time";
 import { Button } from "../ui/Button";
@@ -10,9 +11,10 @@ interface ApprovedCardProps {
   clip: Clip;
   index: number;
   playClip: (id: number) => void;
+  seekTo?: (sec: number) => void;
 }
 
-export function ApprovedCard({ clip, index, playClip }: ApprovedCardProps) {
+export function ApprovedCard({ clip, index, playClip, seekTo }: ApprovedCardProps) {
   const { playingClip, toggleApproval, setActiveId, activeId } = useClipStore();
 
   const isPlaying = playingClip?.id === clip.id;
@@ -24,8 +26,14 @@ export function ApprovedCard({ clip, index, playClip }: ApprovedCardProps) {
 
   return (
     <article
-      onClick={() => setActiveId(clip.id)}
-      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all duration-150 ${
+      onClick={() => {
+        setActiveId(clip.id);
+        if (seekTo && useSettingsStore.getState().settings.autoSeekOnSelect) {
+          const startSec = toSec(clip.start);
+          if (startSec !== null) seekTo(startSec);
+        }
+      }}
+      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all duration-150 cursor-pointer ${
         isActive
           ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-400 dark:border-emerald-500/50"
           : "bg-white dark:bg-zinc-900/40 border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700/80 shadow-xs dark:shadow-none"

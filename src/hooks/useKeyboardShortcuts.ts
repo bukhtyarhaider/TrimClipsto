@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useClipStore } from "../store/useClipStore";
+import { useSettingsStore } from "../store/useSettingsStore";
 import { fmt, toSec } from "../utils/time";
 
 interface KeyboardShortcutsProps {
@@ -38,11 +39,16 @@ export function useKeyboardShortcuts({
         showToast,
       } = store;
 
-      // Escape closes Studio Mode or modals even when focusing input
+      // Escape closes dialogs in proper stacking order (ConfirmDialog > Settings > Paste > Studio)
       if (e.key === "Escape") {
-        if (isStudioOpen) {
+        if (store.confirmModal) {
           e.preventDefault();
-          setIsStudioOpen(false);
+          store.closeConfirmModal();
+          return;
+        }
+        if (useSettingsStore.getState().isOpen) {
+          e.preventDefault();
+          useSettingsStore.getState().closeSettings();
           return;
         }
         if (store.isPasteOpen) {
@@ -50,9 +56,9 @@ export function useKeyboardShortcuts({
           store.closePasteModal();
           return;
         }
-        if (store.confirmModal) {
+        if (isStudioOpen) {
           e.preventDefault();
-          store.closeConfirmModal();
+          setIsStudioOpen(false);
           return;
         }
       }
@@ -174,16 +180,21 @@ export function useKeyboardShortcuts({
           return;
         }
 
+        const settings = useSettingsStore.getState().settings;
+
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           e.preventDefault();
-          const step = (e.shiftKey ? 5 : 1) * (e.key === "ArrowLeft" ? -1 : 1);
+          const smallNudge = settings.nudgeSmall ?? 1;
+          const largeNudge = settings.nudgeLarge ?? 5;
+          const step = (e.shiftKey ? largeNudge : smallNudge) * (e.key === "ArrowLeft" ? -1 : 1);
           nudge(step);
           return;
         }
 
         if (e.key === "," || e.key === ".") {
           e.preventDefault();
-          const frameStep = (e.key === "," ? -1 : 1) / 30;
+          const fps = settings.fps || 30;
+          const frameStep = (e.key === "," ? -1 : 1) / fps;
           nudge(frameStep);
           return;
         }

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useClipStore, toExportJSON } from "../../store/useClipStore";
+import { useSettingsStore } from "../../store/useSettingsStore";
+import { slug } from "../../utils/validation";
 import { Button } from "../ui/Button";
 import { Code, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -7,10 +9,21 @@ export function PreviewPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const { clips, showToast } = useClipStore();
+  const { projectName, jsonIndent, timestampFormat } = useSettingsStore(
+    state => state.settings
+  );
 
   if (!clips.length) return null;
 
-  const jsonString = JSON.stringify(toExportJSON(clips), null, 2);
+  const exportedData = toExportJSON(clips, timestampFormat);
+  const indentSpace = jsonIndent === "minified" ? undefined : Number(jsonIndent);
+  const jsonString = indentSpace
+    ? JSON.stringify(exportedData, null, indentSpace)
+    : JSON.stringify(exportedData);
+
+  const displayFileName = projectName.trim()
+    ? `${slug(projectName)}_clips.json`
+    : "clips.json";
 
   const handleCopy = async () => {
     try {
@@ -46,7 +59,13 @@ export function PreviewPanel() {
       {isOpen && (
         <div className="p-4 pt-0 space-y-3 border-t border-zinc-200 dark:border-zinc-800/60">
           <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400">
-            <span>This is exactly what gets saved to <code className="font-mono text-blue-600 dark:text-blue-400">clips.json</code>.</span>
+            <span>
+              This is exactly what gets saved to{" "}
+              <code className="font-mono text-blue-600 dark:text-blue-400">
+                {displayFileName}
+              </code>
+              .
+            </span>
             <Button
               variant="secondary"
               size="xs"
